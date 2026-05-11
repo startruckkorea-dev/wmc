@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STK Weekend Mobility Car</title>
+<style>
+:root{
+  --blue:#1a5fb4;--blue-dark:#0d3b7a;--blue-light:#e8f0fb;
+  --green:#2e7d32;--green-light:#e8f5e9;
+  --red:#c62828;--red-light:#ffebee;
+  --orange:#e65100;--orange-light:#fff3e0;
+  --gray:#f5f5f5;--gray2:#e0e0e0;--gray3:#9e9e9e;
+  --text:#212121;--text2:#616161;
+  --radius:8px;--shadow:0 2px 8px rgba(0,0,0,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0f4f8;color:var(--text);font-size:14px}
+/* ── HEADER ── */
+.header{background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.header-left{display:flex;align-items:center;gap:12px}
+.header-icon{font-size:1.4rem}
+.header-title{font-size:1rem;font-weight:700}
+.header-sub{font-size:.72rem;opacity:.75;margin-top:1px}
+.header-right{display:flex;align-items:center;gap:12px;font-size:.8rem}
+.btn-logout{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:.78rem}
+.btn-logout:hover{background:rgba(255,255,255,.25)}
+/* ── LOGIN ── */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#0d3b7a,#1a5fb4)}
+.login-card{background:#fff;border-radius:16px;padding:48px 40px;text-align:center;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.login-logo{font-size:3rem;margin-bottom:16px}
+.login-title{font-size:1.3rem;font-weight:700;margin-bottom:6px}
+.login-sub{font-size:.82rem;color:var(--text2);margin-bottom:32px}
+.btn-ms-login{width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-ms-login:hover{background:var(--blue-dark)}
+.btn-ms-login:disabled{background:var(--gray3);cursor:not-allowed}
+/* ── TABS ── */
+.tab-bar{background:#fff;border-bottom:2px solid var(--gray2);padding:0 24px;display:flex;gap:4px}
+.tab-btn{padding:12px 20px;border:none;background:none;cursor:pointer;font-size:.85rem;font-weight:500;color:var(--text2);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:700}
+.tab-btn:hover{color:var(--blue)}
+/* ── MAIN ── */
+#app{display:none}
+.page{display:none;padding:24px;max-width:1100px;margin:0 auto}
+.page.active{display:block}
+/* ── CARDS ── */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--gray2);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-weight:700;font-size:.95rem}
+.card-body{padding:18px}
+/* ── EVENT LIST ── */
+.event-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
+.event-card{background:#fff;border-radius:10px;box-shadow:var(--shadow);overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;border:2px solid transparent}
+.event-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.event-card.active-event{border-color:var(--blue)}
+.event-card-header{padding:14px 16px;background:linear-gradient(135deg,var(--blue),#2e86de)}
+.event-card-header.finished{background:linear-gradient(135deg,#757575,#9e9e9e)}
+.event-card-title{color:#fff;font-weight:700;font-size:.95rem}
+.event-card-week{color:rgba(255,255,255,.8);font-size:.75rem;margin-top:3px}
+.event-card-body{padding:14px 16px}
+.event-info-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:.82rem;color:var(--text2)}
+.event-info-row strong{color:var(--text)}
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700}
+.status-badge.active{background:var(--blue-light);color:var(--blue)}
+.status-badge.finished{background:var(--gray);color:var(--gray3)}
+.status-badge.draft{background:var(--orange-light);color:var(--orange)}
+/* ── DETAIL ── */
+.detail-header{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 24px;margin-bottom:16px}
+.detail-title{font-size:1.15rem;font-weight:700;margin-bottom:12px}
+.detail-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.detail-meta-item{background:var(--gray);border-radius:6px;padding:10px 14px}
+.detail-meta-label{font-size:.72rem;color:var(--text2);margin-bottom:3px}
+.detail-meta-value{font-size:.88rem;font-weight:600}
+.vehicle-table{width:100%;border-collapse:collapse}
+.vehicle-table th{background:var(--blue);color:#fff;padding:10px 12px;text-align:left;font-size:.82rem}
+.vehicle-table td{padding:10px 12px;border-bottom:1px solid var(--gray2);font-size:.85rem}
+.vehicle-table tr:last-child td{border-bottom:none}
+.vehicle-table tr:hover td{background:var(--blue-light)}
+.app-status{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700}
+.app-status.applied{background:#e3f2fd;color:#1565c0}
+.app-status.winner{background:var(--green-light);color:var(--green)}
+.app-status.not-selected{background:var(--gray);color:var(--gray3)}
+.app-status.waiting{background:var(--orange-light);color:var(--orange)}
+.btn-apply{background:var(--blue);color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-size:.8rem;font-weight:600}
+.btn-apply:hover{background:var(--blue-dark)}
+.btn-apply:disabled{background:var(--gray3);cursor:not-allowed}
+.btn-cancel{background:var(--red-light);color:var(--red);border:1px solid var(--red);padding:6px 16px;border-radius:4px;cursor:pointer;font-size:.8rem;font-weight:600}
+.notice-box{border:1px solid var(--gray2);border-radius:6px;padding:14px 16px;font-size:.85rem;white-space:pre-wrap;background:#fffde7}
+/* ── ADMIN ── */
+.admin-section{margin-bottom:24px}
+.admin-section-title{font-size:.9rem;font-weight:700;color:var(--blue);margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--blue-light)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:.78rem;font-weight:600;color:var(--text2)}
+.form-group input,.form-group select,.form-group textarea{border:1px solid var(--gray2);border-radius:4px;padding:7px 10px;font-size:.85rem;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--blue)}
+.btn{padding:8px 16px;border-radius:4px;border:none;cursor:pointer;font-size:.82rem;font-weight:600;transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue-dark)}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover{background:#1b5e20}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover{background:#b71c1c}
+.btn-warning{background:var(--orange);color:#fff}
+.btn-warning:hover{background:#bf360c}
+.btn-secondary{background:var(--gray2);color:var(--text)}
+.btn-secondary:hover{background:#bdbdbd}
+.btn-sm{padding:4px 10px;font-size:.75rem}
+.vehicle-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;background:var(--gray);padding:8px;border-radius:4px}
+.vehicle-row input{flex:1;min-width:0}
+.admin-event-list{display:flex;flex-direction:column;gap:10px}
+.admin-event-item{background:#fff;border-radius:6px;border:1px solid var(--gray2);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.admin-event-info{flex:1}
+.admin-event-title{font-weight:700;font-size:.88rem}
+.admin-event-meta{font-size:.75rem;color:var(--text2);margin-top:3px}
+.admin-event-actions{display:flex;gap:6px}
+/* ── COUPON ── */
+.coupon-display{background:linear-gradient(135deg,var(--blue),#2e86de);color:#fff;border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.coupon-icon{font-size:2rem}
+.coupon-count{font-size:1.8rem;font-weight:700}
+.coupon-label{font-size:.8rem;opacity:.85}
+/* ── LOADING ── */
+#loading{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:9999}
+.loading-box{background:#fff;border-radius:10px;padding:28px 40px;text-align:center}
+.spinner{width:36px;height:36px;border:4px solid var(--gray2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:10px;padding:24px;width:90%;max-width:480px;max-height:80vh;overflow-y:auto}
+.modal-title{font-size:1rem;font-weight:700;margin-bottom:16px}
+.modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+/* ── EMPTY ── */
+.empty-state{text-align:center;padding:48px 24px;color:var(--gray3)}
+.empty-icon{font-size:3rem;margin-bottom:12px}
+/* ── PAGINATION ── */
+.pagination{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:16px}
+.page-btn{padding:6px 10px;border:1px solid var(--gray2);background:#fff;border-radius:4px;cursor:pointer;font-size:.8rem}
+.page-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.page-btn:hover:not(.active){background:var(--blue-light)}
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  .event-grid{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+  .detail-meta-grid{grid-template-columns:1fr}
+  .header-sub{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🚗</div>
+    <div class="login-title">STK Weekend Mobility Car</div>
+    <div class="login-sub">주말 차량 추첨 신청 시스템</div>
+    <button class="btn-ms-login" id="btn-login" disabled>
+      <span>⏳</span> 로딩 중...
+    </button>
+    <div id="login-err" style="color:#c62828;font-size:.78rem;margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">🚗</div>
+      <div>
+        <div class="header-title">STK Weekend Mobility Car</div>
+        <div class="header-sub">주말 차량 추첨 신청 시스템</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span id="user-name"></span>
+      <span id="coupon-header" style="background:rgba(255,255,255,.15);padding:4px 10px;border-radius:20px;font-size:.78rem">🎫 쿠폰: -</span>
+      <button class="btn-logout" onclick="logout()">로그아웃</button>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('list')" id="tab-list">🗓 추첨 목록</button>
+    <button class="tab-btn" onclick="switchTab('my')" id="tab-my">📋 내 신청</button>
+    <button class="tab-btn" id="tab-admin" style="display:none" onclick="switchTab('admin')">⚙️ 관리자</button>
+  </div>
+
+  <!-- Page: List -->
+  <div class="page active" id="page-list">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:1rem;font-weight:700">주말 차량 추첨</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="filter-status" onchange="loadEvents()" style="border:1px solid var(--gray2);border-radius:4px;padding:5px 10px;font-size:.8rem">
+          <option value="all">전체</option>
+          <option value="Active" selected>진행 중</option>
+          <option value="Finished">종료</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="loadEvents()">🔄 새로고침</button>
+      </div>
+    </div>
+    <div id="event-grid" class="event-grid"></div>
+    <div id="list-pagination" class="pagination"></div>
+  </div>
+
+  <!-- Page: Detail -->
+  <div class="page" id="page-detail">
+    <div style="margin-bottom:12px">
+      <button class="btn btn-secondary btn-sm" onclick="switchTab('list')">← 목록으로</button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+
+  <!-- Page: My -->
+  <div class="page" id="page-my">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:16px">📋 내 신청 현황</h2>
+    <div id="my-content"></div>
+  </div>
+
+  <!-- Page: Admin -->
+  <div class="page" id="page-admin">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:16px">⚙️ 관리자</h2>
+
+    <!-- 쿠폰 관리 -->
+    <div class="card admin-section">
+      <div class="card-header">
+        <span class="card-title">🎫 쿠폰 관리</span>
+        <button class="btn btn-secondary btn-sm" onclick="loadCouponData()">🔄 새로고침</button>
+      </div>
+      <div class="card-body">
+        <div id="coupon-admin-table"></div>
+      </div>
+    </div>
+
+    <!-- 추첨 이벤트 등록 -->
+    <div class="card admin-section">
+      <div class="card-header">
+        <span class="card-title">➕ 추첨 이벤트 등록</span>
+      </div>
+      <div class="card-body">
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>이벤트 제목 *</label>
+            <input type="text" id="adm-title" placeholder="Weekend Mobility Car for Employee(WK18)">
+          </div>
+          <div class="form-group">
+            <label>주차 / 구분</label>
+            <input type="text" id="adm-week" placeholder="WK18 또는 Lunar New Year">
+          </div>
+          <div class="form-group">
+            <label>이용 시작 *</label>
+            <input type="datetime-local" id="adm-start">
+          </div>
+          <div class="form-group">
+            <label>이용 종료 *</label>
+            <input type="datetime-local" id="adm-end">
+          </div>
+          <div class="form-group">
+            <label>신청 마감 *</label>
+            <input type="datetime-local" id="adm-deadline">
+          </div>
+          <div class="form-group">
+            <label>쿠폰 소진 수 *</label>
+            <input type="number" id="adm-coupon-cost" value="1" min="1" placeholder="당첨 시 차감 쿠폰 수">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>공지사항 / 안내</label>
+          <textarea id="adm-notice" rows="3" placeholder="* Consecutive holidays&#10;* Additional Comment: ..."></textarea>
+        </div>
+        <!-- 차량 등록 -->
+        <div class="admin-section-title">차량 등록</div>
+        <div id="vehicle-inputs">
+          <div class="vehicle-row" data-idx="0">
+            <input type="text" placeholder="모델 (e.g. A 220 Sedan)" style="flex:2">
+            <input type="text" placeholder="색상 (e.g. 696-Night Black)" style="flex:2">
+            <input type="text" placeholder="번호판 (e.g. 362마7342)" style="flex:1.5">
+            <button class="btn btn-danger btn-sm" onclick="removeVehicleRow(this)">✕</button>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="addVehicleRow()" style="margin-top:8px">+ 차량 추가</button>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="saveEvent()">💾 임시 저장</button>
+          <button class="btn btn-success" onclick="saveEvent('Active')">🚀 저장 후 즉시 활성화</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 이벤트 목록 관리 -->
+    <div class="card admin-section">
+      <div class="card-header">
+        <span class="card-title">📋 이벤트 관리</span>
+        <button class="btn btn-secondary btn-sm" onclick="loadAdminEvents()">🔄 새로고침</button>
+      </div>
+      <div class="card-body">
+        <div id="admin-event-list"></div>
+      </div>
+    </div>
+
+    <!-- 추첨 실행 -->
+    <div class="card admin-section">
+      <div class="card-header">
+        <span class="card-title">🎰 추첨 실행</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size:.85rem;color:var(--text2);margin-bottom:12px">매주 목요일 오후 6시에 활성 이벤트의 당첨자를 무작위 추첨합니다. 수동으로도 실행 가능합니다.</p>
+        <select id="draw-event-sel" style="border:1px solid var(--gray2);border-radius:4px;padding:7px 10px;font-size:.85rem;margin-bottom:12px;width:100%">
+          <option value="">추첨할 이벤트 선택</option>
+        </select>
+        <button class="btn btn-warning" onclick="runDraw()">🎲 추첨 실행</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loading" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:9999">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div id="loading-msg">처리 중입니다...</div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box">
+    <div class="modal-title" id="confirm-title">확인</div>
+    <div id="confirm-msg" style="font-size:.88rem;color:var(--text2)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeConfirm()">취소</button>
+      <button class="btn btn-primary" id="confirm-ok-btn">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+const CLIENT_ID = '432976c2-b43a-492e-8213-ece505fa515b';
+const TENANT_ID = 'b2519e2e-d4b1-4d35-a7e2-dc3b8bdb9f80';
+const SITE_PATH = 'startruckkorea.sharepoint.com:/sites/STK-DB';
+const GRAPH = 'https://graph.microsoft.com/v1.0';
+const COUPON_FILE = 'WMC_Coupons.xlsx'; // SharePoint 문서 라이브러리에 있는 쿠폰 엑셀
+
+const LIST_EVENTS  = 'WMC_Events';
+const LIST_VEHICLES= 'WMC_Vehicles';
+const LIST_APPS    = 'WMC_Applications';
+
+const ADMIN_EMAILS = ['jimmy.lee@hyosung.com','hye-jin.yun@hyosung.com'];
+
+let user = {}, siteId = '', msalApp = null;
+let allEvents = [], myApplications = [];
+let couponData = []; // [{email, name, coupon}]
+let currentEvent = null;
+
+// ═══════════════════════════════════════════
+// MSAL AUTH
+// ═══════════════════════════════════════════
+async function initMSAL(){
+  await loadScript('https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js');
+  msalApp = new msal.PublicClientApplication({
+    auth:{clientId:CLIENT_ID, authority:'https://login.microsoftonline.com/'+TENANT_ID, redirectUri:location.origin},
+    cache:{cacheLocation:'sessionStorage'}
+  });
+  await msalApp.initialize();
+  const redirect = await msalApp.handleRedirectPromise();
+  if(redirect){ await boot(redirect.account); return; }
+  const accounts = msalApp.getAllAccounts();
+  if(accounts.length){ await boot(accounts[0]); return; }
+  const btn = document.getElementById('btn-login');
+  btn.disabled = false; btn.innerHTML = '<span>🔑</span> Microsoft 계정으로 로그인';
+  btn.onclick = ()=>msalApp.loginRedirect({scopes:['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All']});
+}
+function loadScript(src){ return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);}); }
+async function token(){
+  const acc=msalApp.getAllAccounts()[0];
+  const r=await msalApp.acquireTokenSilent({scopes:['Sites.ReadWrite.All','Files.ReadWrite.All'],account:acc}).catch(()=>msalApp.acquireTokenRedirect({scopes:['Sites.ReadWrite.All','Files.ReadWrite.All']}));
+  return r.accessToken;
+}
+function logout(){ msalApp.logoutRedirect(); }
+
+// ═══════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════
+async function api(path, method='GET', body=null){
+  const t = await token();
+  const opts = {method, headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'}};
+  if(body) opts.body = JSON.stringify(body);
+  const r = await fetch(GRAPH+path, opts);
+  if(!r.ok){ const e=await r.text(); throw new Error(r.status+' '+e); }
+  return method==='DELETE' ? null : r.json();
+}
+function loading(v, msg='처리 중입니다...'){
+  const el=document.getElementById('loading');
+  el.style.display=v?'flex':'none';
+  document.getElementById('loading-msg').textContent=msg;
+}
+
+// ═══════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════
+async function boot(account){
+  user = {name: account.name, email: account.username};
+  document.getElementById('user-name').textContent = user.name;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  // 관리자 탭 표시
+  if(ADMIN_EMAILS.map(e=>e.toLowerCase()).includes(user.email.toLowerCase())){
+    document.getElementById('tab-admin').style.display = '';
+  }
+
+  try {
+    const site = await api('/sites/'+SITE_PATH);
+    siteId = site.id;
+    await Promise.all([loadEvents(), loadMyCoupons(), loadMyApplications()]);
+  } catch(e){ alert('초기화 오류: '+e.message); }
+}
+
+// ═══════════════════════════════════════════
+// TAB
+// ═══════════════════════════════════════════
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+tab)?.classList.add('active');
+  document.getElementById('page-'+tab)?.classList.add('active');
+  if(tab==='my') loadMyPage();
+  if(tab==='admin'){ loadAdminEvents(); loadCouponData(); }
+}
+
+// ═══════════════════════════════════════════
+// FORMAT HELPERS
+// ═══════════════════════════════════════════
+function fmtDT(iso){
+  if(!iso) return '-';
+  const d = new Date(iso);
+  return d.toLocaleDateString('ko-KR',{month:'long',day:'numeric'})
+    + ' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function fmtDate(iso){
+  if(!iso) return '-';
+  return new Date(iso).toLocaleDateString('ko-KR');
+}
+
+// ═══════════════════════════════════════════
+// EVENTS (LIST PAGE)
+// ═══════════════════════════════════════════
+async function loadEvents(){
+  const statusFilter = document.getElementById('filter-status').value;
+  let filter = '';
+  if(statusFilter !== 'all') filter = `&$filter=fields/Status eq '${statusFilter}'`;
+  loading(true,'이벤트 로딩 중...');
+  try{
+    const data = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields&$orderby=fields/Created desc&$top=50${filter}`);
+    allEvents = data.value;
+    renderEventGrid(allEvents);
+  }catch(e){ alert('이벤트 로드 실패: '+e.message); }
+  finally{ loading(false); }
+}
+
+function renderEventGrid(events){
+  const grid = document.getElementById('event-grid');
+  if(!events.length){
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">🚗</div><div>이벤트가 없습니다</div></div>';
+    return;
+  }
+  grid.innerHTML = events.map(ev=>{
+    const f = ev.fields;
+    const isActive = f.Status === 'Active';
+    const isFinished = f.Status === 'Finished';
+    const myApp = myApplications.find(a=>Number(a.fields.EventID)===Number(ev.id));
+    const appBadge = myApp ? (myApp.fields.Status==='Winner'
+      ? '<span class="app-status winner">🏆 당첨</span>'
+      : myApp.fields.Status==='Applied'
+      ? '<span class="app-status applied">✅ 신청완료</span>'
+      : '') : '';
+    return `<div class="event-card ${isActive?'active-event':''}" onclick="showDetail(${ev.id})">
+      <div class="event-card-header ${isFinished?'finished':''}">
+        <div class="event-card-title">${f.Title||''}</div>
+        <div class="event-card-week">${f.WeekNumber||''}</div>
+      </div>
+      <div class="event-card-body">
+        <div class="event-info-row">📅 <strong>${fmtDT(f.AvailableStart)}</strong> ~ <strong>${fmtDT(f.AvailableEnd)}</strong></div>
+        <div class="event-info-row">⏰ 신청 마감: <strong>${fmtDT(f.Deadline)}</strong></div>
+        <div class="event-info-row">🎫 쿠폰 소진: <strong>${f.CouponCost||1}개</strong></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <span class="status-badge ${isActive?'active':isFinished?'finished':'draft'}">
+            ${isActive?'🟢 In Progress':isFinished?'⚫ Finished':'🟡 Draft'}
+          </span>
+          ${appBadge}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// DETAIL PAGE
+// ═══════════════════════════════════════════
+async function showDetail(eventId){
+  loading(true,'상세 정보 로딩...');
+  try{
+    const [evData, vehs, apps] = await Promise.all([
+      api(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${eventId}?$expand=fields`),
+      api(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields&$filter=fields/EventID eq ${eventId}&$top=50`),
+      api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$filter=fields/EventID eq ${eventId}&$top=500`)
+    ]);
+    currentEvent = evData;
+    const f = evData.fields;
+    const isActive = f.Status === 'Active';
+    const isPast = new Date(f.Deadline) < new Date();
+    const vehList = vehs.value;
+    const appList = apps.value;
+
+    // 각 차량별 지원자 수, 내 상태
+    const vehRows = vehList.map(v=>{
+      const vf = v.fields;
+      const vApps = appList.filter(a=>Number(a.fields.VehicleID)===Number(v.id));
+      const myApp = vApps.find(a=>(a.fields.ApplicantEmail||'').toLowerCase()===user.email.toLowerCase());
+      const winner = vApps.find(a=>a.fields.Status==='Winner');
+
+      let actionBtn = '';
+      if(isActive && !isPast){
+        if(myApp && myApp.fields.Status==='Applied'){
+          actionBtn = `<button class="btn-cancel" onclick="cancelApplication(${myApp.id},${eventId});event.stopPropagation()">취소</button>`;
+        } else if(!myApp){
+          actionBtn = `<button class="btn-apply" onclick="applyVehicle(${eventId},${v.id},'${(vf.Model||'').replace(/'/g,"\'")}');event.stopPropagation()">신청</button>`;
+        }
+      }
+
+      let appStatusHtml = '';
+      if(myApp){
+        if(myApp.fields.Status==='Winner') appStatusHtml='<span class="app-status winner">🏆 Winner</span>';
+        else if(myApp.fields.Status==='Applied') appStatusHtml='<span class="app-status applied">✅ Applied</span>';
+        else if(myApp.fields.Status==='NotSelected') appStatusHtml='<span class="app-status not-selected">낙첨</span>';
+      } else if(winner){
+        appStatusHtml='<span class="app-status not-selected">마감</span>';
+      }
+
+      return `<tr>
+        <td>${vf.Model||'-'}</td>
+        <td>${vf.Color||'-'}</td>
+        <td>${vf.PlateNo||'-'}</td>
+        <td style="text-align:center">${vApps.filter(a=>a.fields.Status==='Applied'||a.fields.Status==='Winner').length}</td>
+        <td>${winner ? winner.fields.ApplicantName||'-' : '-'}</td>
+        <td>${appStatusHtml} ${actionBtn}</td>
+      </tr>`;
+    }).join('');
+
+    const myCoupon = couponData.find(c=>(c.email||'').toLowerCase()===user.email.toLowerCase());
+    const couponLeft = myCoupon ? (myCoupon.coupon||0) : 0;
+    const couponCost = f.CouponCost||1;
+
+    document.getElementById('detail-content').innerHTML = `
+      <div class="detail-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="detail-title">${f.Title||''}</div>
+          <span class="status-badge ${f.Status==='Active'?'active':f.Status==='Finished'?'finished':'draft'}">
+            ${f.Status==='Active'?'🟢 In Progress':f.Status==='Finished'?'⚫ Finished':'🟡 Draft'}
+          </span>
+        </div>
+        <div class="detail-meta-grid">
+          <div class="detail-meta-item">
+            <div class="detail-meta-label">이용 가능 기간</div>
+            <div class="detail-meta-value">${fmtDT(f.AvailableStart)} ~ ${fmtDT(f.AvailableEnd)}</div>
+          </div>
+          <div class="detail-meta-item">
+            <div class="detail-meta-label">신청 마감</div>
+            <div class="detail-meta-value" style="color:${isPast?'var(--red)':'var(--blue)'}">${fmtDT(f.Deadline)}</div>
+          </div>
+          <div class="detail-meta-item">
+            <div class="detail-meta-label">내 쿠폰 잔여</div>
+            <div class="detail-meta-value">🎫 ${couponLeft}개</div>
+          </div>
+          <div class="detail-meta-item">
+            <div class="detail-meta-label">신청 시 쿠폰 소진</div>
+            <div class="detail-meta-value" style="color:var(--orange)">🎫 ${couponCost}개</div>
+          </div>
+        </div>
+        ${couponLeft < couponCost && isActive && !isPast ? `<div style="margin-top:10px;padding:8px 12px;background:var(--red-light);color:var(--red);border-radius:4px;font-size:.82rem">⚠️ 쿠폰이 부족합니다. 신청하려면 쿠폰이 ${couponCost}개 이상 필요합니다.</div>` : ''}
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">🚗 차량 목록</span></div>
+        <div style="overflow-x:auto">
+          <table class="vehicle-table">
+            <thead><tr><th>Model</th><th>Color</th><th>Plate No.</th><th style="text-align:center">Number of applicants</th><th>Winner</th><th>Application</th></tr></thead>
+            <tbody>${vehRows||'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray3)">등록된 차량이 없습니다</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+
+      ${f.Notice ? `<div class="card"><div class="card-body"><div class="notice-box">${f.Notice.replace(/</g,'&lt;')}</div></div></div>` : ''}
+    `;
+
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-detail').classList.add('active');
+  }catch(e){ alert('상세 로드 실패: '+e.message); }
+  finally{ loading(false); }
+}
+
+// ═══════════════════════════════════════════
+// COUPON
+// ═══════════════════════════════════════════
+async function loadMyCoupons(){
+  try{
+    const data = await api(`/sites/${siteId}/lists/WMC_Coupons/items?$expand=fields&$top=200`);
+    couponData = data.value.map(i=>({id:i.id, email:i.fields.Email||'', name:i.fields.Title||'', coupon:Number(i.fields.CouponCount||0)}));
+    const mine = couponData.find(c=>(c.email||'').toLowerCase()===user.email.toLowerCase());
+    document.getElementById('coupon-header').textContent = '🎫 쿠폰: '+(mine?mine.coupon:0)+'개';
+  }catch(e){ console.warn('쿠폰 로드 실패',e); }
+}
+
+// ═══════════════════════════════════════════
+// APPLY / CANCEL
+// ═══════════════════════════════════════════
+async function applyVehicle(eventId, vehicleId, vehicleName){
+  const myCoupon = couponData.find(c=>(c.email||'').toLowerCase()===user.email.toLowerCase());
+  const ev = allEvents.find(e=>Number(e.id)===Number(eventId));
+  const couponCost = ev ? (ev.fields.CouponCost||1) : 1;
+
+  if(!myCoupon || myCoupon.coupon < couponCost){
+    alert(`쿠폰이 부족합니다.
+현재 쿠폰: ${myCoupon?myCoupon.coupon:0}개
+필요 쿠폰: ${couponCost}개`); return;
+  }
+
+  showConfirmModal(`"${vehicleName}" 에 신청하시겠습니까?
+쿠폰 ${couponCost}개가 차감됩니다.`, async ()=>{
+    loading(true,'신청 처리 중...');
+    try{
+      // 1. 지원 등록
+      await api(`/sites/${siteId}/lists/${LIST_APPS}/items`,'POST',{fields:{
+        Title:'WMC-'+new Date().toISOString().slice(0,10)+'-tmp',
+        EventID:eventId, VehicleID:vehicleId,
+        ApplicantEmail:user.email, ApplicantName:user.name,
+        Status:'Applied', AppliedDate:new Date().toISOString()
+      }});
+      // 2. 쿠폰 차감
+      if(myCoupon){
+        await api(`/sites/${siteId}/lists/WMC_Coupons/items/${myCoupon.id}`,'PATCH',{fields:{CouponCount:myCoupon.coupon-couponCost}});
+      }
+      await Promise.all([loadMyCoupons(), loadMyApplications()]);
+      await showDetail(eventId);
+      alert('✅ 신청 완료!');
+    }catch(e){ alert('신청 실패: '+e.message); }
+    finally{ loading(false); }
+  });
+}
+
+async function cancelApplication(appId, eventId){
+  const app = myApplications.find(a=>Number(a.id)===Number(appId));
+  const ev = allEvents.find(e=>Number(e.id)===Number(eventId));
+  const couponCost = ev ? (ev.fields.CouponCost||1) : 1;
+
+  showConfirmModal('신청을 취소하시겠습니까? 취소 시 쿠폰이 반환됩니다.', async ()=>{
+    loading(true,'취소 처리 중...');
+    try{
+      await api(`/sites/${siteId}/lists/${LIST_APPS}/items/${appId}`,'DELETE');
+      // 쿠폰 반환
+      const myCoupon = couponData.find(c=>(c.email||'').toLowerCase()===user.email.toLowerCase());
+      if(myCoupon) await api(`/sites/${siteId}/lists/WMC_Coupons/items/${myCoupon.id}`,'PATCH',{fields:{CouponCount:myCoupon.coupon+couponCost}});
+      await Promise.all([loadMyCoupons(), loadMyApplications()]);
+      await showDetail(eventId);
+    }catch(e){ alert('취소 실패: '+e.message); }
+    finally{ loading(false); }
+  });
+}
+
+async function loadMyApplications(){
+  try{
+    const data = await api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$filter=fields/ApplicantEmail eq '${user.email}'&$top=100`);
+    myApplications = data.value;
+  }catch(e){ console.warn('내 신청 로드 실패',e); }
+}
+
+// ═══════════════════════════════════════════
+// MY PAGE
+// ═══════════════════════════════════════════
+async function loadMyPage(){
+  loading(true);
+  try{
+    await loadMyApplications();
+    if(!myApplications.length){
+      document.getElementById('my-content').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div>신청 내역이 없습니다</div></div>';
+      return;
+    }
+    const html = myApplications.sort((a,b)=>new Date(b.fields.AppliedDate)-new Date(a.fields.AppliedDate)).map(a=>{
+      const f = a.fields;
+      const ev = allEvents.find(e=>Number(e.id)===Number(f.EventID));
+      const statusLabel = f.Status==='Winner'?'🏆 당첨':f.Status==='Applied'?'✅ 신청중':'낙첨';
+      const statusClass = f.Status==='Winner'?'winner':f.Status==='Applied'?'applied':'not-selected';
+      return `<div class="card" style="margin-bottom:12px">
+        <div class="card-body" style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-weight:700;margin-bottom:4px">${ev?ev.fields.Title:('이벤트 #'+f.EventID)}</div>
+            <div style="font-size:.8rem;color:var(--text2)">신청일: ${fmtDate(f.AppliedDate)}</div>
+          </div>
+          <span class="app-status ${statusClass}">${statusLabel}</span>
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('my-content').innerHTML = html;
+  }catch(e){ console.error(e); }
+  finally{ loading(false); }
+}
+
+// ═══════════════════════════════════════════
+// ADMIN: EVENTS
+// ═══════════════════════════════════════════
+function addVehicleRow(){
+  const div = document.createElement('div');
+  div.className = 'vehicle-row';
+  div.innerHTML = `<input type="text" placeholder="모델" style="flex:2"><input type="text" placeholder="색상" style="flex:2"><input type="text" placeholder="번호판" style="flex:1.5"><button class="btn btn-danger btn-sm" onclick="removeVehicleRow(this)">✕</button>`;
+  document.getElementById('vehicle-inputs').appendChild(div);
+}
+function removeVehicleRow(btn){ btn.closest('.vehicle-row').remove(); }
+
+async function saveEvent(forceStatus){
+  const title = document.getElementById('adm-title').value.trim();
+  const week  = document.getElementById('adm-week').value.trim();
+  const start = document.getElementById('adm-start').value;
+  const end   = document.getElementById('adm-end').value;
+  const deadline = document.getElementById('adm-deadline').value;
+  const couponCost = parseInt(document.getElementById('adm-coupon-cost').value)||1;
+  const notice = document.getElementById('adm-notice').value.trim();
+
+  if(!title||!start||!end||!deadline){ alert('필수 항목을 입력해주세요.'); return; }
+
+  const vehicles = [];
+  document.querySelectorAll('#vehicle-inputs .vehicle-row').forEach(row=>{
+    const inputs = row.querySelectorAll('input');
+    if(inputs[0].value.trim()){
+      vehicles.push({model:inputs[0].value.trim(), color:inputs[1].value.trim(), plate:inputs[2].value.trim()});
+    }
+  });
+  if(!vehicles.length){ alert('차량을 1개 이상 등록해주세요.'); return; }
+
+  loading(true,'이벤트 저장 중...');
+  try{
+    const item = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items`,'POST',{fields:{
+      Title:title, WeekNumber:week,
+      AvailableStart:new Date(start).toISOString(),
+      AvailableEnd:new Date(end).toISOString(),
+      Deadline:new Date(deadline).toISOString(),
+      CouponCost:couponCost, Notice:notice,
+      Status: forceStatus||'Draft'
+    }});
+    const evId = item.id;
+    // 차량 등록
+    for(const v of vehicles){
+      await api(`/sites/${siteId}/lists/${LIST_VEHICLES}/items`,'POST',{fields:{
+        Title:v.model+' '+v.plate, EventID:parseInt(evId),
+        Model:v.model, Color:v.color, PlateNo:v.plate
+      }});
+    }
+    alert('✅ 저장 완료!');
+    // 폼 초기화
+    ['adm-title','adm-week','adm-start','adm-end','adm-deadline','adm-notice'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('adm-coupon-cost').value='1';
+    document.getElementById('vehicle-inputs').innerHTML=`<div class="vehicle-row"><input type="text" placeholder="모델" style="flex:2"><input type="text" placeholder="색상" style="flex:2"><input type="text" placeholder="번호판" style="flex:1.5"><button class="btn btn-danger btn-sm" onclick="removeVehicleRow(this)">✕</button></div>`;
+    await loadAdminEvents();
+  }catch(e){ alert('저장 실패: '+e.message); }
+  finally{ loading(false); }
+}
+
+async function loadAdminEvents(){
+  try{
+    const data = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields&$orderby=fields/Created desc&$top=50`);
+    const drawSel = document.getElementById('draw-event-sel');
+    drawSel.innerHTML='<option value="">추첨할 이벤트 선택</option>';
+
+    const html = data.value.map(ev=>{
+      const f = ev.fields;
+      if(f.Status==='Active') drawSel.innerHTML+=`<option value="${ev.id}">${f.Title}</option>`;
+      return `<div class="admin-event-item">
+        <div class="admin-event-info">
+          <div class="admin-event-title">${f.Title}</div>
+          <div class="admin-event-meta">${fmtDT(f.AvailableStart)} ~ ${fmtDT(f.AvailableEnd)} | 마감: ${fmtDT(f.Deadline)} | 🎫 ${f.CouponCost||1}개</div>
+        </div>
+        <div class="admin-event-actions">
+          ${f.Status==='Draft'?`<button class="btn btn-success btn-sm" onclick="changeEventStatus(${ev.id},'Active')">🟢 활성화</button>`:''}
+          ${f.Status==='Active'?`<button class="btn btn-secondary btn-sm" onclick="changeEventStatus(${ev.id},'Draft')">⏸ 비활성화</button>`:''}
+          ${f.Status!=='Finished'?`<button class="btn btn-danger btn-sm" onclick="changeEventStatus(${ev.id},'Finished')">⏹ 종료</button>`:''}
+          <span class="status-badge ${f.Status==='Active'?'active':f.Status==='Finished'?'finished':'draft'}" style="margin-left:4px">${f.Status}</span>
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('admin-event-list').innerHTML = html||'<div style="color:var(--gray3);padding:12px">이벤트가 없습니다</div>';
+  }catch(e){ console.error(e); }
+}
+
+async function changeEventStatus(evId, status){
+  const msg = status==='Active'?'활성화':status==='Finished'?'종료':'비활성화';
+  showConfirmModal(`이벤트를 ${msg}하시겠습니까?`, async()=>{
+    loading(true);
+    try{
+      await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}`,'PATCH',{fields:{Status:status}});
+      await loadAdminEvents();
+      await loadEvents();
+    }catch(e){ alert('상태 변경 실패: '+e.message); }
+    finally{ loading(false); }
+  });
+}
+
+// ═══════════════════════════════════════════
+// ADMIN: DRAW (추첨)
+// ═══════════════════════════════════════════
+async function runDraw(){
+  const evId = document.getElementById('draw-event-sel').value;
+  if(!evId){ alert('이벤트를 선택해주세요.'); return; }
+
+  showConfirmModal('선택한 이벤트의 당첨자를 추첨하시겠습니까? 이미 지원한 인원 중 차량당 1명이 무작위 선정됩니다.', async()=>{
+    loading(true,'추첨 진행 중...');
+    try{
+      const [vehs, apps] = await Promise.all([
+        api(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields&$filter=fields/EventID eq ${evId}&$top=50`),
+        api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$filter=fields/EventID eq ${evId}&$top=500`)
+      ]);
+
+      const ev = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}?$expand=fields`);
+      const couponCost = ev.fields.CouponCost||1;
+
+      let winnerCount = 0;
+      for(const veh of vehs.value){
+        const vApps = apps.value.filter(a=>Number(a.fields.VehicleID)===Number(veh.id) && a.fields.Status==='Applied');
+        if(!vApps.length) continue;
+        // 무작위 1명 선정
+        const winner = vApps[Math.floor(Math.random()*vApps.length)];
+        // 당첨자 상태 변경
+        await api(`/sites/${siteId}/lists/${LIST_APPS}/items/${winner.id}`,'PATCH',{fields:{Status:'Winner'}});
+        // 나머지 낙첨 처리
+        for(const loser of vApps.filter(a=>a.id!==winner.id)){
+          // 쿠폰 반환 (낙첨자)
+          const lCoupon = couponData.find(c=>(c.email||'').toLowerCase()===(loser.fields.ApplicantEmail||'').toLowerCase());
+          if(lCoupon) await api(`/sites/${siteId}/lists/WMC_Coupons/items/${lCoupon.id}`,'PATCH',{fields:{CouponCount:lCoupon.coupon+couponCost}});
+          await api(`/sites/${siteId}/lists/${LIST_APPS}/items/${loser.id}`,'PATCH',{fields:{Status:'NotSelected'}});
+        }
+        winnerCount++;
+      }
+      alert(`✅ 추첨 완료!
+총 ${winnerCount}명의 당첨자가 선정되었습니다.`);
+      await loadAdminEvents();
+    }catch(e){ alert('추첨 실패: '+e.message); }
+    finally{ loading(false); }
+  });
+}
+
+// ═══════════════════════════════════════════
+// ADMIN: COUPON TABLE
+// ═══════════════════════════════════════════
+async function loadCouponData(){
+  loading(true,'쿠폰 데이터 로드 중...');
+  try{
+    await loadMyCoupons();
+    if(!couponData.length){
+      document.getElementById('coupon-admin-table').innerHTML='<div style="color:var(--gray3)">쿠폰 데이터가 없습니다. SharePoint에 WMC_Coupons 목록을 생성해주세요.</div>';
+      return;
+    }
+    const html = `<table style="width:100%;border-collapse:collapse;font-size:.83rem">
+      <thead><tr style="background:var(--blue);color:#fff">
+        <th style="padding:8px 12px;text-align:left">이름</th>
+        <th style="padding:8px 12px;text-align:left">이메일</th>
+        <th style="padding:8px 12px;text-align:center">쿠폰 수</th>
+        <th style="padding:8px 12px;text-align:center">조정</th>
+      </tr></thead>
+      <tbody>${couponData.map(c=>`<tr style="border-bottom:1px solid var(--gray2)">
+        <td style="padding:8px 12px">${c.name}</td>
+        <td style="padding:8px 12px;color:var(--text2)">${c.email}</td>
+        <td style="padding:8px 12px;text-align:center;font-weight:700">${c.coupon}</td>
+        <td style="padding:8px 12px;text-align:center">
+          <div style="display:flex;gap:4px;justify-content:center;align-items:center">
+            <button class="btn btn-danger btn-sm" onclick="adjustCoupon('${c.id}',${c.coupon},-1)">−</button>
+            <input type="number" value="${c.coupon}" min="0" style="width:52px;text-align:center;border:1px solid var(--gray2);border-radius:4px;padding:3px" onchange="setCoupon('${c.id}',this.value)">
+            <button class="btn btn-success btn-sm" onclick="adjustCoupon('${c.id}',${c.coupon},1)">＋</button>
+          </div>
+        </td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+    document.getElementById('coupon-admin-table').innerHTML = html;
+  }catch(e){ console.error(e); }
+  finally{ loading(false); }
+}
+
+async function adjustCoupon(id, current, delta){
+  const newVal = Math.max(0, current+delta);
+  await api(`/sites/${siteId}/lists/WMC_Coupons/items/${id}`,'PATCH',{fields:{CouponCount:newVal}});
+  await loadCouponData();
+}
+async function setCoupon(id, val){
+  const newVal = Math.max(0, parseInt(val)||0);
+  await api(`/sites/${siteId}/lists/WMC_Coupons/items/${id}`,'PATCH',{fields:{CouponCount:newVal}});
+  await loadCouponData();
+}
+
+// ═══════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════
+function showConfirmModal(msg, onOk){
+  document.getElementById('confirm-msg').innerHTML = msg.replace(/\n/g,'<br>');
+  document.getElementById('confirm-modal').classList.add('open');
+  document.getElementById('confirm-ok-btn').onclick = ()=>{ closeConfirm(); onOk(); };
+}
+function closeConfirm(){ document.getElementById('confirm-modal').classList.remove('open'); }
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+initMSAL();
+</script>
+</body>
+</html>
