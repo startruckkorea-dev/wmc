@@ -440,10 +440,7 @@ function fmtDT(iso){
   return d.toLocaleDateString('ko-KR',{month:'long',day:'numeric'})
     + ' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
-function fmtDate(iso){
-  if(!iso) return '-';
-  return new Date(iso).toLocaleDateString('ko-KR');
-}
+function fmtDate(iso){ if(!iso)return''; const d=new Date(new Date(iso).getTime()+9*3600*1000); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0')+' '+String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0'); }
 
 // ═══════════════════════════════════════════
 // EVENTS (LIST PAGE)
