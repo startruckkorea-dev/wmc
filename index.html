@@ -188,7 +188,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
       <div class="header-icon">🚗</div>
       <div>
         <div class="header-title">STK Weekend Mobility Car</div>
-        <div class="header-sub">주말 차량 추첨 신청 시스템</div>
+        <div class="header-sub" id="header-sub-contact">주말 차량 추첨 신청 시스템</div>
       </div>
     </div>
     <div class="header-right">
@@ -439,7 +439,7 @@ const LIST_EVENTS  = 'WMC_Events';
 const LIST_VEHICLES= 'WMC_Vehicles';
 const LIST_APPS    = 'WMC_Applications';
 
-let ADMIN_EMAILS = ['jimmy.lee@hyosung.com','hye-jin.yun@hyosung.com']; // system_config로 덮어씀
+let ADMIN_EMAILS = []; // system_config_final.xlsx WM_ADMIN_N 에서 동적 로드
 let _sysConfig = null;
 
 let user = {}, siteId = '', msalApp = null;
@@ -580,7 +580,7 @@ async function boot(account){
         }
         // WM_CONTACT → 헤더 문의 이메일 표시
         if (cfg['WM_CONTACT'] && cfg['WM_CONTACT'].email) {
-          const subEl = document.querySelector('.header-sub');
+          const subEl = document.getElementById('header-sub-contact') || document.querySelector('.header-sub');
           if (subEl) subEl.textContent = '문의: ' + cfg['WM_CONTACT'].email;
         }
       }
