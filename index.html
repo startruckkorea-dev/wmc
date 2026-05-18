@@ -523,12 +523,11 @@ function fmtDate(iso){ if(!iso)return''; const d=new Date(new Date(iso).getTime(
 // ═══════════════════════════════════════════
 async function loadEvents(){
   const statusFilter = document.getElementById('filter-status').value;
-  let filter = '';
-  if(statusFilter !== 'all') filter = `&$filter=fields/Status eq '${statusFilter}'`;
   loading(true,'이벤트 로딩 중...');
   try{
-    const data = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields&$orderby=fields/Created desc&$top=50${filter}`);
-    allEvents = data.value;
+    const data = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields&$top=200`);
+    const sorted = (data.value||[]).sort((a,b)=>new Date(b.fields.AvailableStart)-new Date(a.fields.AvailableStart));
+    allEvents = statusFilter !== 'all' ? sorted.filter(ev=>(ev.fields.Status||'')===statusFilter) : sorted;
     renderEventGrid(allEvents);
   }catch(e){ alert('이벤트 로드 실패: '+e.message); }
   finally{ loading(false); }
@@ -746,7 +745,8 @@ async function cancelApplication(appId, eventId){
 
 async function loadMyApplications(){
   try{
-    const data = await api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$filter=fields/ApplicantEmail eq '${user.email}'&$top=100`);
+    const data = await api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$top=500`);
+    data.value = (data.value||[]).filter(a=>(a.fields.ApplicantEmail||'').toLowerCase()===user.email.toLowerCase());
     myApplications = data.value;
   }catch(e){ console.warn('내 신청 로드 실패',e); }
 }
