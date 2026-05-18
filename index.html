@@ -439,7 +439,8 @@ const LIST_EVENTS  = 'WMC_Events';
 const LIST_VEHICLES= 'WMC_Vehicles';
 const LIST_APPS    = 'WMC_Applications';
 
-const ADMIN_EMAILS = ['jimmy.lee@hyosung.com','hye-jin.yun@hyosung.com'];
+let ADMIN_EMAILS = ['jimmy.lee@hyosung.com','hye-jin.yun@hyosung.com']; // system_config로 덮어씀
+let _sysConfig = null;
 
 let user = {}, siteId = '', msalApp = null;
 let allEvents = [], myApplications = [];
@@ -506,6 +507,43 @@ function showToast(msg, icon='✅', duration=1800){
 // ═══════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════
+// SYSTEM CONFIG
+// ═══════════════════════════════════════════
+async function loadSystemConfig() {
+  if (_sysConfig) return _sysConfig;
+  try {
+    const t = await token();
+    const drivesRes = await api('/sites/' + siteId + '/drives');
+    const docDrive = (drivesRes.value || []).find(d =>
+      ['Documents','문서','Shared Documents','AttachedFiles'].includes(d.name)
+    ) || (drivesRes.value && drivesRes.value[0]);
+    if (!docDrive) throw new Error('Drive not found');
+    const res = await fetch(
+      'https://graph.microsoft.com/v1.0/drives/' + docDrive.id + '/root:/system_config_final.xlsx:/content',
+      { headers: { Authorization: 'Bearer ' + t } }
+    );
+    if (!res.ok) throw new Error('system_config_final.xlsx not found (' + res.status + ')');
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+    const cfg = {};
+    rows.forEach(row => {
+      const key = (row[0] || '').toString().trim();
+      if (!key || key.startsWith('[') || key.startsWith('■') || key === '설정 키 (KEY)') return;
+      cfg[key] = {
+        name:  (row[1] || '').toString().trim(),
+        email: (row[2] || '').toString().trim()
+      };
+    });
+    _sysConfig = cfg;
+    return cfg;
+  } catch(e) {
+    console.warn('[SystemConfig] 로드 실패:', e.message);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════
 async function boot(account){
   user = {name: account.name, email: account.username};
   document.getElementById('user-name').textContent = user.name;
@@ -520,6 +558,34 @@ async function boot(account){
   try {
     const site = await api('/sites/'+SITE_PATH);
     siteId = site.id;
+
+    // system_config_final.xlsx 로드 → 관리자/연락처 갱신
+    try {
+      const cfg = await loadSystemConfig();
+      if (cfg) {
+        // WM_ADMIN_1, WM_ADMIN_2 ... 자동 확장
+        const adminEmails = [];
+        let n = 1;
+        while (cfg['WM_ADMIN_' + n]) {
+          const e = cfg['WM_ADMIN_' + n].email;
+          if (e) adminEmails.push(e);
+          n++;
+        }
+        if (adminEmails.length) {
+          ADMIN_EMAILS.splice(0, ADMIN_EMAILS.length, ...adminEmails);
+          // 관리자 탭 재확인
+          if (ADMIN_EMAILS.map(e=>e.toLowerCase()).includes(user.email.toLowerCase())) {
+            document.getElementById('tab-admin').style.display = '';
+          }
+        }
+        // WM_CONTACT → 헤더 문의 이메일 표시
+        if (cfg['WM_CONTACT'] && cfg['WM_CONTACT'].email) {
+          const subEl = document.querySelector('.header-sub');
+          if (subEl) subEl.textContent = '문의: ' + cfg['WM_CONTACT'].email;
+        }
+      }
+    } catch(cfgErr) { console.warn('[SystemConfig]', cfgErr.message); }
+
     await Promise.all([loadEvents(), loadMyCoupons(), loadMyApplications()]);
     loadDrawSchedule();
     // 로그인 직후 즉시 자동 활성화 체크
