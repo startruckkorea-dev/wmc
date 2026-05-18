@@ -514,12 +514,13 @@ async function loadSystemConfig() {
   try {
     const t = await token();
     const drivesRes = await api('/sites/' + siteId + '/drives');
-    const docDrive = (drivesRes.value || []).find(d =>
-      ['Documents','문서','Shared Documents','AttachedFiles'].includes(d.name)
-    ) || (drivesRes.value && drivesRes.value[0]);
+    let docDrive = (drivesRes.value || []).find(d =>
+      ['Documents','문서','Shared Documents'].includes(d.name)
+    );
+    if (!docDrive && drivesRes.value && drivesRes.value.length) docDrive = drivesRes.value[0];
     if (!docDrive) throw new Error('Drive not found');
     const res = await fetch(
-      'https://graph.microsoft.com/v1.0/drives/' + docDrive.id + '/root:/system_config_final.xlsx:/content',
+      GRAPH + '/drives/' + docDrive.id + '/root:/system_config_final.xlsx:/content',
       { headers: { Authorization: 'Bearer ' + t } }
     );
     if (!res.ok) throw new Error('system_config_final.xlsx not found (' + res.status + ')');
