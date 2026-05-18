@@ -366,12 +366,9 @@ async function initMSAL(){
     auth:{clientId:CLIENT_ID, authority:'https://login.microsoftonline.com/'+TENANT_ID, redirectUri:location.origin+location.pathname},
     cache:{cacheLocation:'localStorage'}
   };
-  // v3: createPublicClientApplication, v2 fallback: new PublicClientApplication
-  if(typeof msal.createPublicClientApplication === 'function'){
-    msalApp = await msal.createPublicClientApplication(msalConfig);
-  } else {
-    msalApp = new msal.PublicClientApplication(msalConfig);
-  }
+  // new PublicClientApplication + initialize() (v2/v3 모두 호환)
+  msalApp = new msal.PublicClientApplication(msalConfig);
+  await msalApp.initialize();
   const redirect = await msalApp.handleRedirectPromise();
   if(redirect){ await boot(redirect.account); return; }
   const accounts = msalApp.getAllAccounts();
