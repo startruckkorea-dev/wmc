@@ -360,11 +360,18 @@ let currentEvent = null;
 // MSAL AUTH
 // ═══════════════════════════════════════════
 async function initMSAL(){
-  await loadScript('https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.25.0/lib/msal-browser.min.js');
-  msalApp = await msal.createPublicClientApplication({
+  // 캐시 우회: 타임스탬프 파라미터 추가
+  await loadScript('https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.25.0/lib/msal-browser.min.js?v='+Date.now());
+  const msalConfig = {
     auth:{clientId:CLIENT_ID, authority:'https://login.microsoftonline.com/'+TENANT_ID, redirectUri:location.origin+location.pathname},
     cache:{cacheLocation:'localStorage'}
-  });
+  };
+  // v3: createPublicClientApplication, v2 fallback: new PublicClientApplication
+  if(typeof msal.createPublicClientApplication === 'function'){
+    msalApp = await msal.createPublicClientApplication(msalConfig);
+  } else {
+    msalApp = new msal.PublicClientApplication(msalConfig);
+  }
   const redirect = await msalApp.handleRedirectPromise();
   if(redirect){ await boot(redirect.account); return; }
   const accounts = msalApp.getAllAccounts();
