@@ -360,12 +360,11 @@ let currentEvent = null;
 // MSAL AUTH
 // ═══════════════════════════════════════════
 async function initMSAL(){
-  await loadScript('https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js');
-  msalApp = new msal.PublicClientApplication({
-    auth:{clientId:CLIENT_ID, authority:'https://login.microsoftonline.com/'+TENANT_ID, redirectUri:location.origin},
-    cache:{cacheLocation:'sessionStorage'}
+  await loadScript('https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js');
+  msalApp = await msal.createPublicClientApplication({
+    auth:{clientId:CLIENT_ID, authority:'https://login.microsoftonline.com/'+TENANT_ID, redirectUri:location.origin+location.pathname},
+    cache:{cacheLocation:'localStorage'}
   });
-  await msalApp.initialize();
   const redirect = await msalApp.handleRedirectPromise();
   if(redirect){ await boot(redirect.account); return; }
   const accounts = msalApp.getAllAccounts();
