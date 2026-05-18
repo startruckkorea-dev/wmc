@@ -360,7 +360,7 @@ let currentEvent = null;
 // MSAL AUTH
 // ═══════════════════════════════════════════
 async function initMSAL(){
-  await loadScript('https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.14.0/lib/msal-browser.min.js');
+  await loadScript('https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.25.0/lib/msal-browser.min.js');
   msalApp = await msal.createPublicClientApplication({
     auth:{clientId:CLIENT_ID, authority:'https://login.microsoftonline.com/'+TENANT_ID, redirectUri:location.origin+location.pathname},
     cache:{cacheLocation:'localStorage'}
