@@ -474,7 +474,7 @@ async function boot(account){
       const _cfg = await loadSystemConfig();
       if (_cfg) {
         // 관리자 이메일 갱신 (WM_ADMIN_N 자동확장)
-        const _adminList = cfgEmails(_cfg, ['WM_ADMIN_1', 'ADMIN_SP']);
+        const _adminList = cfgEmails(_cfg, ['WM_ADMIN_1', 'WM_ADMIN_2', 'ADMIN_SP']);
         if (_adminList.length) {
           ADMIN_EMAILS.splice(0, ADMIN_EMAILS.length, ..._adminList);
           // 관리자 탭 재확인
@@ -931,7 +931,11 @@ async function loadCouponData(){
   try{
     await loadMyCoupons();
     if(!couponData.length){
-      document.getElementById('coupon-admin-table').innerHTML='<div style="color:var(--gray3)">쿠폰 데이터가 없습니다. SharePoint에 WMC_Coupons 목록을 생성해주세요.</div>';
+      document.getElementById('coupon-admin-table').innerHTML=`<div style="padding:12px;background:#fff3e0;border-radius:8px;font-size:.83rem;color:#e65100">
+        ⚠️ <strong>WMC_Coupons 리스트가 없거나 데이터가 없습니다.</strong><br>
+        SharePoint STK-DB 사이트에 <code>WMC_Coupons</code> 리스트를 생성하고<br>
+        컬럼: <code>Title</code>(이름), <code>Email</code>(텍스트), <code>CouponCount</code>(숫자) 를 추가해주세요.
+      </div>`;
       return;
     }
     const html = `<table style="width:100%;border-collapse:collapse;font-size:.83rem">
