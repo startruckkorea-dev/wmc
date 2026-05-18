@@ -348,9 +348,10 @@ const LIST_EVENTS  = 'WMC_Events';
 const LIST_VEHICLES= 'WMC_Vehicles';
 const LIST_APPS    = 'WMC_Applications';
 
-const ADMIN_EMAILS = ['jimmy.lee@hyosung.com','hye-jin.yun@hyosung.com'];
+const ADMIN_EMAILS = ['jimmy.lee@hyosung.com','hye-jin.yun@hyosung.com']; // 기본값 (config 로드 후 덮어씀)
 
 let user = {}, siteId = '', msalApp = null;
+let _sysConfig = null;
 let allEvents = [], myApplications = [];
 let couponData = []; // [{email, name, coupon}]
 let currentEvent = null;
@@ -398,6 +399,50 @@ function loading(v, msg='처리 중입니다...'){
   document.getElementById('loading-msg').textContent=msg;
 }
 
+// ── System Config (system_config_final.xlsx) ──
+async function loadSystemConfig() {
+  if (_sysConfig) return _sysConfig;
+  try {
+    const t = await token();
+    const drivesRes = await api('/sites/' + siteId + '/drives');
+    let docDrive = (drivesRes.value || []).find(d => ['Documents','문서','Shared Documents','AttachedFiles'].includes(d.name));
+    if (!docDrive && drivesRes.value && drivesRes.value.length) docDrive = drivesRes.value[0];
+    const res = await fetch('https://graph.microsoft.com/v1.0/drives/' + docDrive.id + '/root:/system_config_final.xlsx:/content',
+      { headers: { Authorization: 'Bearer ' + t } });
+    if (!res.ok) throw new Error('system_config_final.xlsx not found');
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+    const cfg = {};
+    rows.forEach(row => {
+      const key = (row[0] || '').toString().trim();
+      if (!key || key.startsWith('[') || key === '설정 키 (KEY)' || key.startsWith('이 파일') || key.startsWith('STK Korea') || key.startsWith('■')) return;
+      cfg[key] = { name: (row[1] || '').toString().trim(), email: (row[2] || '').toString().trim() };
+    });
+    _sysConfig = cfg;
+    return cfg;
+  } catch(e) {
+    console.warn('[Config] 로드 실패, 기본값 사용:', e.message);
+    return null;
+  }
+}
+function cfgVal(cfg, key, defaultObj) {
+  if (!cfg || !cfg[key]) return defaultObj;
+  const v = cfg[key];
+  return { ...defaultObj, name: v.name || defaultObj.name, email: v.email || defaultObj.email };
+}
+function cfgEmails(cfg, keys) {
+  const expanded = [];
+  keys.forEach(k => {
+    const match = k.match(/^(.+_ADMIN_)[0-9]+$/);
+    if (match) {
+      const prefix = match[1]; let n = 1;
+      while (cfg && cfg[prefix + n]) { expanded.push(prefix + n); n++; }
+    } else { expanded.push(k); }
+  });
+  return [...new Set(expanded)].map(k => (cfg && cfg[k] ? cfg[k].email : '')).filter(Boolean);
+}
+
 // ═══════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════
@@ -415,6 +460,29 @@ async function boot(account){
   try {
     const site = await api('/sites/'+SITE_PATH);
     siteId = site.id;
+
+    // system_config_final.xlsx 로드
+    try {
+      const _cfg = await loadSystemConfig();
+      if (_cfg) {
+        // 관리자 이메일 갱신 (WM_ADMIN_N 자동확장)
+        const _adminList = cfgEmails(_cfg, ['WM_ADMIN_1', 'ADMIN_SP']);
+        if (_adminList.length) {
+          ADMIN_EMAILS.splice(0, ADMIN_EMAILS.length, ..._adminList);
+          // 관리자 탭 재확인
+          if (ADMIN_EMAILS.map(e=>e.toLowerCase()).includes(user.email.toLowerCase())) {
+            document.getElementById('tab-admin').style.display = '';
+          }
+        }
+        // 문의 이메일 표시
+        const _contact = cfgVal(_cfg, 'WM_CONTACT', cfgVal(_cfg, 'CONTACT_EMAIL', {email:''}));
+        if (_contact.email) {
+          const subEl = document.querySelector('.header-sub');
+          if (subEl) subEl.textContent = '문의: ' + _contact.email;
+        }
+      }
+    } catch(e2) { console.warn('[Config]', e2.message); }
+
     await Promise.all([loadEvents(), loadMyCoupons(), loadMyApplications()]);
   } catch(e){ alert('초기화 오류: '+e.message); }
 }
