@@ -451,26 +451,41 @@ let currentEvent = null;
 // ═══════════════════════════════════════════
 // MSAL AUTH
 // ═══════════════════════════════════════════
-async function initMSAL(){
-  await loadScript('https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.0/lib/msal-browser.min.js');
-  msalApp = new msal.PublicClientApplication({
-    auth:{clientId:CLIENT_ID, authority:'https://login.microsoftonline.com/'+TENANT_ID, redirectUri:location.origin},
-    cache:{cacheLocation:'sessionStorage'}
-  });
-  await msalApp.initialize();
-  const redirect = await msalApp.handleRedirectPromise();
-  if(redirect){ await boot(redirect.account); return; }
-  const accounts = msalApp.getAllAccounts();
-  if(accounts.length){ await boot(accounts[0]); return; }
-  const btn = document.getElementById('btn-login');
-  btn.disabled = false; btn.innerHTML = '<span>🔑</span> Microsoft 계정으로 로그인';
-  btn.onclick = ()=>msalApp.loginRedirect({scopes:['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All']});
-}
+const SCOPES = ['User.Read','Sites.ReadWrite.All','Files.ReadWrite.All'];
+
 function loadScript(src){ return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);}); }
+
+window.addEventListener('load', async()=>{
+  const btn = document.getElementById('btn-login');
+  try{
+    await loadScript('https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.25.0/lib/msal-browser.min.js');
+    msalApp = await msal.PublicClientApplication.createPublicClientApplication({
+      auth:{clientId:CLIENT_ID, authority:'https://login.microsoftonline.com/'+TENANT_ID, redirectUri:location.origin+location.pathname},
+      cache:{cacheLocation:'localStorage'}
+    });
+    const redirect = await msalApp.handleRedirectPromise();
+    if(redirect){ msalApp.setActiveAccount(redirect.account); await boot(redirect.account); return; }
+    const accounts = msalApp.getAllAccounts();
+    if(accounts.length){ msalApp.setActiveAccount(accounts[0]); await boot(accounts[0]); return; }
+    btn.disabled = false; btn.innerHTML = '<span>🔑</span> Microsoft 계정으로 로그인'; btn.onclick = signIn;
+  } catch(e){ setTimeout(()=>{ btn.disabled=false; btn.innerHTML='<span>🔑</span> Microsoft 계정으로 로그인'; }, 3000); }
+});
+
+async function initMSAL(){ /* window.load에서 처리 */ }
+
+async function signIn(){ if(!msalApp) return; try{ await msalApp.loginRedirect({scopes:SCOPES}); }catch(e){ alert(e.message); } }
+
 async function token(){
-  const acc=msalApp.getAllAccounts()[0];
-  const r=await msalApp.acquireTokenSilent({scopes:['Sites.ReadWrite.All','Files.ReadWrite.All'],account:acc}).catch(()=>msalApp.acquireTokenRedirect({scopes:['Sites.ReadWrite.All','Files.ReadWrite.All']}));
-  return r.accessToken;
+  try{
+    const r = await msalApp.acquireTokenSilent({scopes:SCOPES, account:msalApp.getActiveAccount()});
+    return r.accessToken;
+  }catch(e){
+    if(e.name==='InteractionRequiredAuthError'||e.errorCode==='interaction_required'||e.errorCode==='login_required'||e.errorCode==='consent_required'){
+      await msalApp.acquireTokenRedirect({scopes:SCOPES, account:msalApp.getActiveAccount()});
+      return null;
+    }
+    throw e;
+  }
 }
 function logout(){ msalApp.logoutRedirect(); }
 
@@ -1767,7 +1782,6 @@ function closeConfirm(){ document.getElementById('confirm-modal').classList.remo
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
-initMSAL();
 startDrawScheduler();
 </script>
 </body>
