@@ -765,7 +765,10 @@ async function showDetail(eventId){
     const f = evData.fields;
     const isActive = f.Status === 'Active';
     const isPast = new Date(f.Deadline) < new Date();
+    console.log('[DEBUG] vehs:', vehs.value.map(v=>({id:v.id, EventID:v.fields.EventID, Title:v.fields.Title})));
+    console.log('[DEBUG] looking for eventId:', eventId, typeof eventId);
     const vehList = vehs.value.filter(v=>Number(v.fields.EventID)===Number(eventId));
+    console.log('[DEBUG] vehList matched:', vehList.length);
     const appList = apps.value.filter(a=>Number(a.fields.EventID)===Number(eventId));
 
     // 각 차량별 지원자 수, 내 상태
