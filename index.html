@@ -801,7 +801,7 @@ async function showDetail(eventId){
         else if(myApp.fields.Status==='Applied') appStatusHtml='<span class="app-status applied">✅ Applied</span>';
         else if(myApp.fields.Status==='NotSelected') appStatusHtml='<span class="app-status not-selected">낙첨</span>';
       } else if(winner){
-        appStatusHtml='<span class="app-status not-selected">마감</span>';
+        appStatusHtml='<span class="app-status not-selected">추첨완료</span>';
       }
 
       return `<tr>
