@@ -548,6 +548,11 @@ async function loadSystemConfig() {
 // ═══════════════════════════════════════════
 async function boot(account){
   user = {name: account.name, email: account.username};
+  // Graph API로 실제 displayName 가져오기
+  try {
+    const me = await api('/me');
+    if(me.displayName) user.name = me.displayName;
+  } catch(e) { console.warn('Graph /me 실패:', e.message); }
   document.getElementById('user-name').textContent = user.name;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -1558,7 +1563,7 @@ function startDrawScheduler(){
 // ═══════════════════════════════════════════
 async function runDrawForEvent(evId){
   const [vehs, apps] = await Promise.all([
-    api(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields&$top=50`),
+    api(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields&$top=500`),
     api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$top=500`)
   ]);
   const ev = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}?$expand=fields`);
