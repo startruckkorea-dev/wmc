@@ -501,6 +501,19 @@ async function api(path, method='GET', body=null){
   if(!r.ok){ const e=await r.text(); throw new Error(r.status+' '+e); }
   return method==='DELETE' ? null : r.json();
 }
+
+async function apiAll(path){
+  let items=[], url=GRAPH+path;
+  while(url){
+    const t=await token();
+    const r=await fetch(url,{headers:{'Authorization':'Bearer '+t}});
+    if(!r.ok){ const e=await r.text(); throw new Error(r.status+' '+e); }
+    const d=await r.json();
+    items=items.concat(d.value||[]);
+    url=d['@odata.nextLink']||null;
+  }
+  return {value:items};
+}
 function loading(v, msg='처리 중입니다...'){
   const el=document.getElementById('loading');
   el.style.display=v?'flex':'none';
@@ -681,7 +694,7 @@ async function loadEvents(){
   const statusFilter = document.getElementById('filter-status').value;
   loading(true,'이벤트 로딩 중...');
   try{
-    const data = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields&$top=200`);
+    const data = await apiAll(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields`);
     const sorted = data.value.sort((a,b)=>new Date(b.fields.AvailableStart)-new Date(a.fields.AvailableStart));
     allEvents = statusFilter !== 'all'
       ? sorted.filter(ev => (ev.fields.Status||'') === statusFilter)
@@ -786,8 +799,8 @@ async function showDetail(eventId){
   try{
     const [evData, vehs, apps] = await Promise.all([
       api(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${eventId}?$expand=fields`),
-      api(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields&$top=500`),
-      api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$top=500`)
+      apiAll(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields`),
+      apiAll(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields`)
     ]);
     currentEvent = evData;
     const f = evData.fields;
@@ -976,7 +989,7 @@ async function applyVehicle(eventId, vehicleId, vehicleName){
     try{
       // 0. 중복 신청 방지: 최신 신청 현황 재확인
       loading(true,'신청 현황 확인 중...');
-      const freshAppsRes = await api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$top=200`);
+      const freshAppsRes = await apiAll(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields`);
       const freshApps = freshAppsRes.value||[];
       const alreadyApplied = freshApps.find(a=>
         Number(a.fields.EventID)===Number(eventId) &&
@@ -1058,7 +1071,7 @@ async function cancelApplication(appId, eventId){
 
 async function loadMyApplications(){
   try{
-    const data = await api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$top=500`);
+    const data = await apiAll(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields`);
     myApplications = data.value.filter(i=>(i.fields.ApplicantEmail||'').toLowerCase()===user.email.toLowerCase());
   }catch(e){ console.warn('내 신청 로드 실패',e); }
 }
@@ -1079,8 +1092,8 @@ async function loadMyPage(){
       document.getElementById('my-content').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div>신청 내역이 없습니다</div></div>';
       return;
     }
-    const allVehs = await api(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields&$top=500`);
-    const allApps = await api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$top=500`);
+    const allVehs = await apiAll(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields`);
+    const allApps = await apiAll(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields`);
     _myAppsData = {apps: myApplications.sort((a,b)=>new Date(b.fields.AppliedDate)-new Date(a.fields.AppliedDate)), vehs: allVehs, allApps};
     _myPage = 1;
     renderMyPage();
@@ -1162,9 +1175,9 @@ async function loadWinnerHistory(){
   loading(true,'신청 기록 조회 중...');
   try{
     const [appsData, vehsData, evData] = await Promise.all([
-      api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$top=500`),
-      api(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields&$top=200`),
-      api(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields&$top=100`)
+      apiAll(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields`),
+      apiAll(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields`),
+      apiAll(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields`)
     ]);
     _histApps = appsData.value.sort((a,b)=>new Date(b.fields.AppliedDate)-new Date(a.fields.AppliedDate));
     _histVehs = vehsData.value;
@@ -1278,7 +1291,7 @@ async function editEvent(evId){
   document.getElementById('adm-notice').value = f.Notice ? f.Notice.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').trim() : '';
 
   // 차량 목록 채우기
-  const vehs = await api(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields&$top=500`);
+  const vehs = await apiAll(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields`);
   const evVehs = vehs.value.filter(v=>Number(v.fields.EventID)===Number(evId));
   const vInp = document.getElementById('vehicle-inputs');
   vInp.innerHTML = evVehs.map(v=>`
@@ -1392,7 +1405,7 @@ let _evtData = [];
 
 async function loadAdminEvents(){
   try{
-    const data = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields&$top=100`);
+    const data = await apiAll(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields`);
     const drawSel = document.getElementById('draw-event-sel');
     drawSel.innerHTML='<option value="">추첨할 이벤트 선택</option>';
     _evtData = data.value;
@@ -1544,7 +1557,7 @@ async function checkAutoActivate(){
   try{
     if(!siteId) return;
     const nowUTC = new Date();
-    const data = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields&$top=100`);
+    const data = await apiAll(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields`);
     let activated = false;
     for(const ev of data.value){
       const f = ev.fields;
@@ -1570,7 +1583,7 @@ function startDrawScheduler(){
       const now = new Date(new Date().getTime()+9*3600*1000);
       const sMin = s.min||0; if(now.getUTCDay()===s.day && now.getUTCHours()===s.hour && now.getUTCMinutes()===sMin){
         try{
-          const data = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields&$top=100`);
+          const data = await apiAll(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields`);
           const active = data.value.filter(ev=>ev.fields.Status==='Active');
           for(const ev of active) await runDrawForEvent(ev.id);
         }catch(e){ console.error('자동 추첨 실패:',e); }
@@ -1586,8 +1599,8 @@ function startDrawScheduler(){
 // ═══════════════════════════════════════════
 async function runDrawForEvent(evId){
   const [vehs, apps] = await Promise.all([
-    api(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields&$top=500`),
-    api(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields&$top=500`)
+    apiAll(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields`),
+    apiAll(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields`)
   ]);
   const ev = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}?$expand=fields`);
   const couponCost = ev.fields.CouponCost||1;
