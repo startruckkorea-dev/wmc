@@ -151,7 +151,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
 /* ── EMPTY ── */
 .empty-state{text-align:center;padding:48px 24px;color:var(--gray3)}
-.empty-icon{font-size:3rem;margin-bottom:12px}
+.empty-icon{font-size:3rem;margin-bottom:12px;display:flex;justify-content:center}
 /* ── PAGINATION ── */
 .pagination{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:16px}
 .page-btn{padding:6px 10px;border:1px solid var(--gray2);background:#fff;border-radius:4px;cursor:pointer;font-size:.8rem}
@@ -202,7 +202,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
   <!-- Header -->
   <div class="header">
     <div class="header-left">
-      <div class="header-icon">🚗</div>
+      <div class="header-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 01-2-2v-4a2 2 0 012-2h1l2-4h12l2 4h1a2 2 0 012 2v4a2 2 0 01-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/></svg></div>
       <div>
         <div class="header-title">STK Weekend Mobility Car</div>
         <div class="header-sub" id="header-sub-contact">주말 차량 추첨 신청 시스템</div>
@@ -210,16 +210,16 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
     </div>
     <div class="header-right">
       <span id="user-name"></span>
-      <span id="coupon-header" style="background:rgba(255,255,255,.15);padding:4px 10px;border-radius:20px;font-size:.78rem">🎫 쿠폰: -</span>
+      <span id="coupon-header" style="background:rgba(255,255,255,.15);padding:4px 10px;border-radius:20px;font-size:.78rem">🎟 쿠폰: -</span>
       <button class="btn-logout" onclick="logout()">로그아웃</button>
     </div>
   </div>
 
   <!-- Tab Bar -->
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('list')" id="tab-list">🗓 추첨 목록</button>
-    <button class="tab-btn" onclick="switchTab('my')" id="tab-my">📋 내 신청</button>
-    <button class="tab-btn" id="tab-admin" style="display:none" onclick="switchTab('admin')">⚙️ 관리자</button>
+    <button class="tab-btn active" onclick="switchTab('list')" id="tab-list"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>추첨 목록</button>
+    <button class="tab-btn" onclick="switchTab('my')" id="tab-my"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>내 신청</button>
+    <button class="tab-btn" id="tab-admin" style="display:none" onclick="switchTab('admin')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>관리자</button>
   </div>
 
   <!-- Page: List -->
@@ -232,7 +232,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
           <option value="Active" selected>진행 중</option>
           <option value="Finished">종료</option>
         </select>
-        <button class="btn btn-secondary btn-sm" onclick="loadEvents()">🔄 새로고침</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadEvents()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>새로고침</button>
       </div>
     </div>
     <div id="event-grid" class="event-grid"></div>
@@ -249,19 +249,19 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 
   <!-- Page: My -->
   <div class="page" id="page-my">
-    <h2 style="font-size:1rem;font-weight:700;margin-bottom:16px">📋 내 신청 현황</h2>
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:16px">내 신청 현황</h2>
     <div id="my-content"></div>
   </div>
 
   <!-- Page: Admin -->
   <div class="page" id="page-admin">
-    <h2 style="font-size:1rem;font-weight:700;margin-bottom:16px">⚙️ 관리자</h2>
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:16px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>관리자</h2>
 
     <!-- 쿠폰 관리 -->
     <div class="card admin-section">
       <div class="card-header">
         <span class="card-title">🎫 쿠폰 관리</span>
-        <button class="btn btn-secondary btn-sm" onclick="loadCouponData()">🔄 새로고침</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadCouponData()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>새로고침</button>
       </div>
       <div class="card-body">
         <div id="coupon-admin-table"></div>
@@ -337,7 +337,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
             <option value="Draft">🟡 초안</option>
             <option value="Finished">⚫ 종료</option>
           </select>
-          <button class="btn btn-secondary btn-sm" onclick="loadAdminEvents()">🔄 새로고침</button>
+          <button class="btn btn-secondary btn-sm" onclick="loadAdminEvents()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>새로고침</button>
         </div>
       </div>
       <div class="card-body">
@@ -349,7 +349,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
     <div class="card admin-section">
       <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
         <span class="card-title">📋 신청 기록 (전체)</span>
-        <button class="btn btn-secondary btn-sm" onclick="loadWinnerHistory()">🔄 새로고침</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadWinnerHistory()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>새로고침</button>
       </div>
       <div class="card-body">
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -378,7 +378,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 
         <!-- 자동 추첨 시간 설정 -->
         <div style="background:#f8fafc;border:1px solid var(--gray2);border-radius:8px;padding:12px;margin-bottom:14px">
-          <div style="font-size:.82rem;font-weight:700;color:var(--blue);margin-bottom:8px">⏰ 자동 추첨 시간 설정</div>
+          <div style="font-size:.82rem;font-weight:700;color:var(--blue);margin-bottom:8px">자동 추첨 시간 설정</div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <select id="draw-day-sel" style="border:1px solid var(--gray2);border-radius:4px;padding:6px 8px;font-size:.82rem">
               <option value="0">일요일</option>
@@ -408,7 +408,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
         <select id="draw-event-sel" style="border:1px solid var(--gray2);border-radius:4px;padding:7px 10px;font-size:.85rem;margin-bottom:12px;width:100%">
           <option value="">추첨할 이벤트 선택</option>
         </select>
-        <button class="btn btn-warning" onclick="runDraw()">🎲 추첨 실행</button>
+        <button class="btn btn-warning" onclick="runDraw()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>추첨 실행</button>
       </div>
     </div>
   </div>
@@ -719,9 +719,10 @@ function _renderEventGridPage(){
   const grid = document.getElementById('event-grid');
   if(!events.length){
     grid.innerHTML = `<div class="empty-state">
-      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.25;margin-bottom:12px">
-        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3.11H5.77L6.85 7zM19 17H5v-5h14v5z" fill="#1a5fb4"/>
-        <circle cx="7.5" cy="14.5" r="1.5" fill="#1a5fb4"/><circle cx="16.5" cy="14.5" r="1.5" fill="#1a5fb4"/>
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px">
+        <path d="M5 17H3a2 2 0 01-2-2v-4a2 2 0 012-2h1l2-5h12l2 5h1a2 2 0 012 2v4a2 2 0 01-2 2h-2"/>
+        <circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/>
+        <path d="M5 10h14" stroke-dasharray="2 2"/>
       </svg>
       <div style="font-size:.95rem;font-weight:600;color:#64748b">진행 중인 이벤트가 없습니다</div>
       <div style="font-size:.8rem;color:#94a3b8;margin-top:4px">새로운 추첨 이벤트를 기다려주세요</div>
@@ -781,7 +782,7 @@ function _renderEventGridPage(){
       <div class="event-card-body">
         <div class="event-info-row">📅 <strong>${fmtDT(f.AvailableStart)}</strong> ~ <strong>${fmtDT(f.AvailableEnd)}</strong></div>
         <div class="event-info-row">⏰ 신청 마감: <strong style="color:${isDeadlinePassed?'var(--red)':'inherit'}">${fmtDT(f.Deadline)}</strong></div>
-        <div class="event-info-row">🎫 쿠폰 소진: <strong>${f.CouponCost||1}개</strong></div>
+        <div class="event-info-row">쿠폰 소진: <strong>${f.CouponCost||1}개</strong></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
           <span class="status-badge ${badgeClass}">${badgeLabel}</span>
           ${appBadge}
@@ -873,11 +874,11 @@ async function showDetail(eventId){
           </div>
           <div class="detail-meta-item">
             <div class="detail-meta-label">내 쿠폰 잔여</div>
-            <div class="detail-meta-value">🎫 ${couponLeft}개</div>
+            <div class="detail-meta-value">${couponLeft}개</div>
           </div>
           <div class="detail-meta-item">
             <div class="detail-meta-label">신청 시 쿠폰 소진</div>
-            <div class="detail-meta-value" style="color:var(--orange)">🎫 ${couponCost}개</div>
+            <div class="detail-meta-value" style="color:var(--orange)">${couponCost}개</div>
           </div>
         </div>
         ${couponLeft < couponCost && isActive && !isPast ? `<div style="margin-top:10px;padding:8px 12px;background:var(--red-light);color:var(--red);border-radius:4px;font-size:.82rem">⚠️ 쿠폰이 부족합니다. 신청하려면 쿠폰이 ${couponCost}개 이상 필요합니다.</div>` : ''}
@@ -1089,7 +1090,7 @@ async function loadMyPage(){
   try{
     await loadMyApplications();
     if(!myApplications.length){
-      document.getElementById('my-content').innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div>신청 내역이 없습니다</div></div>';
+      document.getElementById('my-content').innerHTML='<div class="empty-state"><div class="empty-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div><div>신청 내역이 없습니다</div></div>';
       return;
     }
     const allVehs = await apiAll(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields`);
@@ -1137,7 +1138,7 @@ function renderMyPage(){
           <div><span style="color:var(--text2)">색상</span><br><strong>${vf.Color||'-'}</strong></div>
           <div><span style="color:var(--text2)">번호판</span><br><strong>${vf.PlateNo||'-'}</strong></div>
           <div><span style="color:var(--text2)">경쟁 인원</span><br><strong>${competitors}명</strong></div>
-          <div><span style="color:var(--text2)">사용 쿠폰</span><br><strong>🎫 ${couponCost}개</strong></div>
+          <div><span style="color:var(--text2)">사용 쿠폰</span><br><strong>${couponCost}개</strong></div>
           <div><span style="color:var(--text2)">이용 기간</span><br><strong>${ev?fmtDT(ev.fields.AvailableStart)+' ~<br>'+fmtDT(ev.fields.AvailableEnd):'-'}</strong></div>
         </div>
       </div>
