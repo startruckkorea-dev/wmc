@@ -206,11 +206,6 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
         <div class="header-title">STK Weekend Mobility Car</div>
         <div class="header-sub" id="header-sub-contact">BU Admin 문의 Email: (로딩중...)</div>
         <div style="margin-top:4px;display:flex;align-items:center;gap:10px;font-size:.72rem;">
-          <span id="wmc-conn-status" style="display:flex;align-items:center;gap:4px;color:#94a3b8;">
-            <span id="wmc-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#94a3b8;display:inline-block;"></span>
-            <span id="wmc-conn-text">연결 확인 중...</span>
-          </span>
-          <span id="wmc-last-ok" style="color:#94a3b8;"></span>
         </div>
       </div>
     </div>
@@ -667,7 +662,6 @@ async function boot(account){
 
   _startHealthCheck();
   _startDailyReload();
-  _setConnStatus(true);
 }
 
 // ═══════════════════════════════════════════
@@ -733,7 +727,7 @@ function switchTab(tab){
   document.getElementById('tab-'+tab)?.classList.add('active');
   document.getElementById('page-'+tab)?.classList.add('active');
   if(tab==='my') loadMyPage();
-  if(tab==='admin'){ initFlatpickrs(); loadAdminEvents(); loadCouponData(); }
+  if(tab==='admin'){ initFlatpickrs(); loadAdminEvents(); loadCouponData(); setTimeout(()=>_setConnStatus(typeof _lastApiOk!=='undefined'&&Date.now()-_lastApiOk<6*60*1000),100); }
 }
 
 // ═══════════════════════════════════════════
@@ -1682,13 +1676,19 @@ function _startDailyReload(){
 function _startHealthCheck(){
   setInterval(async () => {
     try {
-      await token(); // 토큰 silent 갱신 시도
-      _setConnStatus(true);
+      await token();
+      _lastApiOk = Date.now();
+      // 관리자 탭이 활성화된 경우에만 UI 업데이트
+      if(document.getElementById('page-admin')?.classList.contains('active')){
+        _setConnStatus(true);
+      }
     } catch(e) {
-      _setConnStatus(false, '토큰 만료');
+      if(document.getElementById('page-admin')?.classList.contains('active')){
+        _setConnStatus(false, '토큰 만료');
+      }
       console.warn('[WMC] 토큰 갱신 실패 → 재로그인 필요');
     }
-  }, 5 * 60 * 1000); // 5분
+  }, 5 * 60 * 1000);
 }
 
 function startDrawScheduler(){
