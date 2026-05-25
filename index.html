@@ -205,6 +205,20 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
       <div>
         <div class="header-title">STK Weekend Mobility Car</div>
         <div class="header-sub" id="header-sub-contact">BU Admin 문의 Email: (로딩중...)</div>
+        <div style="margin-top:3px;display:flex;align-items:center;gap:12px;font-size:.7rem;">
+          <span id="wmc-conn-status" style="display:flex;align-items:center;gap:4px;">
+            <span id="wmc-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#94a3b8;display:inline-block;flex-shrink:0;"></span>
+            <span id="wmc-conn-text" style="color:#94a3b8;">연결 확인 중...</span>
+          </span>
+          <span id="wmc-last-ok" style="color:#94a3b8;"></span>
+        </div>
+        <div style="margin-top:4px;display:flex;align-items:center;gap:10px;font-size:.72rem;">
+          <span id="wmc-conn-status" style="display:flex;align-items:center;gap:4px;color:#94a3b8;">
+            <span id="wmc-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#94a3b8;display:inline-block;"></span>
+            <span id="wmc-conn-text">연결 확인 중...</span>
+          </span>
+          <span id="wmc-last-ok" style="color:#94a3b8;"></span>
+        </div>
       </div>
     </div>
     <div class="header-right">
@@ -493,12 +507,22 @@ function logout(){ msalApp.logoutRedirect(); }
 // API
 // ═══════════════════════════════════════════
 async function api(path, method='GET', body=null){
-  const t = await token();
-  const opts = {method, headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'}};
-  if(body) opts.body = JSON.stringify(body);
-  const r = await fetch(GRAPH+path, opts);
-  if(!r.ok){ const e=await r.text(); throw new Error(r.status+' '+e); }
-  return method==='DELETE' ? null : r.json();
+  try {
+    const t = await token();
+    const opts = {method, headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'}};
+    if(body) opts.body = JSON.stringify(body);
+    const r = await fetch(GRAPH+path, opts);
+    if(!r.ok){
+      const e=await r.text();
+      if(typeof _apiErrCount!=='undefined'){ _apiErrCount++; if(typeof _setConnStatus==='function') _setConnStatus(false,(r.status+' '+e).slice(0,20)); if(_apiErrCount>=5){ console.warn('[WMC] API 오류 5회 연속 → 3초 후 자동 리로드'); setTimeout(()=>location.reload(),3000); } }
+      throw new Error(r.status+' '+e);
+    }
+    if(typeof _setConnStatus==='function') _setConnStatus(true);
+    return method==='DELETE' ? null : r.json();
+  } catch(e) {
+    if(e.message && (e.message.startsWith('401')||e.message.includes('invalid_grant'))){ console.warn('[WMC] 토큰 만료 → 재로그인'); try{ await token(); }catch(te){ msalApp.acquireTokenRedirect({scopes:['Sites.ReadWrite.All','Files.ReadWrite.All']}); } }
+    throw e;
+  }
 }
 
 async function apiAll(path){
@@ -629,6 +653,10 @@ async function boot(account){
     // 로그인 직후 즉시 자동 활성화 체크
     checkAutoActivate();
   } catch(e){ alert('초기화 오류: '+e.message); }
+
+  _startHealthCheck();
+  _startDailyReload();
+  _setConnStatus(true);
 }
 
 // ═══════════════════════════════════════════
@@ -1594,6 +1622,62 @@ async function checkAutoActivate(){
     }
     if(activated) await loadEvents();
   }catch(e){ console.warn('자동 활성화 체크 실패:', e.message); }
+}
+
+// ═══════════════════════════════════════════
+// WATCHDOG — 장기 오픈 안정성 관리
+// ═══════════════════════════════════════════
+let _lastApiOk = Date.now();
+let _apiErrCount = 0;
+const _RELOAD_HOUR = 4; // 매일 새벽 4시 자동 리로드
+
+function _setConnStatus(ok, msg=''){
+  const dot  = document.getElementById('wmc-conn-dot');
+  const text = document.getElementById('wmc-conn-text');
+  const last = document.getElementById('wmc-last-ok');
+  if(!dot) return;
+  if(ok){
+    dot.style.background  = '#22c55e';
+    dot.style.boxShadow   = '0 0 6px #22c55e';
+    text.style.color      = '#15803d';
+    text.textContent      = '연결 정상';
+    _lastApiOk = Date.now();
+    _apiErrCount = 0;
+    const now = new Date(_lastApiOk + 9*3600*1000);
+    last.textContent = '마지막 확인: ' + now.toUTCString().slice(17,22) + ' KST';
+  } else {
+    dot.style.background  = '#ef4444';
+    dot.style.boxShadow   = '0 0 6px #ef4444';
+    text.style.color      = '#dc2626';
+    text.textContent      = '연결 오류 ' + (msg ? '('+msg+')' : '');
+  }
+}
+
+// API 함수에 연결 상태 연동 (원본 api 래핑)
+
+
+// 매일 새벽 4시 자동 리로드 (추첨 없는 시간대)
+function _startDailyReload(){
+  setInterval(() => {
+    const now = new Date(new Date().getTime() + 9*3600*1000);
+    if(now.getUTCHours() === _RELOAD_HOUR && now.getUTCMinutes() === 0){
+      console.log('[WMC] 매일 새벽 4시 자동 리로드');
+      location.reload();
+    }
+  }, 60000);
+}
+
+// 5분마다 연결 상태 체크 (토큰 갱신 포함)
+function _startHealthCheck(){
+  setInterval(async () => {
+    try {
+      await token(); // 토큰 silent 갱신 시도
+      _setConnStatus(true);
+    } catch(e) {
+      _setConnStatus(false, '토큰 만료');
+      console.warn('[WMC] 토큰 갱신 실패 → 재로그인 필요');
+    }
+  }, 5 * 60 * 1000); // 5분
 }
 
 function startDrawScheduler(){
