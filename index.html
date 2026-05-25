@@ -205,13 +205,6 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
       <div>
         <div class="header-title">STK Weekend Mobility Car</div>
         <div class="header-sub" id="header-sub-contact">BU Admin 문의 Email: (로딩중...)</div>
-        <div style="margin-top:3px;display:flex;align-items:center;gap:12px;font-size:.7rem;">
-          <span id="wmc-conn-status" style="display:flex;align-items:center;gap:4px;">
-            <span id="wmc-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#94a3b8;display:inline-block;flex-shrink:0;"></span>
-            <span id="wmc-conn-text" style="color:#94a3b8;">연결 확인 중...</span>
-          </span>
-          <span id="wmc-last-ok" style="color:#94a3b8;"></span>
-        </div>
         <div style="margin-top:4px;display:flex;align-items:center;gap:10px;font-size:.72rem;">
           <span id="wmc-conn-status" style="display:flex;align-items:center;gap:4px;color:#94a3b8;">
             <span id="wmc-conn-dot" style="width:7px;height:7px;border-radius:50%;background:#94a3b8;display:inline-block;"></span>
@@ -268,6 +261,24 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 
   <!-- Page: Admin -->
   <div class="page" id="page-admin">
+    <!-- 시스템 연결 상태 -->
+    <div class="card admin-section" style="margin-bottom:16px;">
+      <div class="card-header">
+        <span class="card-title">🖥️ 시스템 연결 상태</span>
+      </div>
+      <div class="card-body" style="padding:14px 16px;">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <span id="wmc-conn-status" style="display:flex;align-items:center;gap:6px;font-size:.85rem;">
+            <span id="wmc-conn-dot" style="width:10px;height:10px;border-radius:50%;background:#94a3b8;display:inline-block;flex-shrink:0;"></span>
+            <span id="wmc-conn-text" style="color:#64748b;font-weight:500;">연결 확인 중...</span>
+          </span>
+          <span id="wmc-last-ok" style="color:#94a3b8;font-size:.78rem;"></span>
+        </div>
+        <div style="margin-top:8px;font-size:.72rem;color:#94a3b8;line-height:1.7;">
+          ※ 5분마다 토큰 자동 갱신 &nbsp;·&nbsp; API 오류 5회 시 자동 재연결 &nbsp;·&nbsp; 매일 새벽 4시 자동 리로드
+        </div>
+      </div>
+    </div>
     <h2 style="font-size:1rem;font-weight:700;margin-bottom:16px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>관리자</h2>
 
     <!-- 쿠폰 관리 -->
