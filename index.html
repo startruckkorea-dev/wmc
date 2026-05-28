@@ -1755,11 +1755,25 @@ function _startHealthCheck(){
 function startDrawScheduler(){
   if(_drawTimer) clearInterval(_drawTimer);
   _drawTimer = setInterval(async()=>{
-    // 자동 추첨 체크
-    const s = JSON.parse(localStorage.getItem(DRAW_SCHEDULE_KEY)||'null');
+    // 자동 추첨 체크 — localStorage 우선, 없으면 wmc_draw_schedule.json 확인
+    let s = JSON.parse(localStorage.getItem(DRAW_SCHEDULE_KEY)||'null');
+    if(!s){
+      try{
+        const t2 = await token();
+        const drvRes = await api('/sites/'+siteId+'/drives');
+        let dd = (drvRes.value||[]).find(d=>['Documents','문서','Shared Documents'].includes(d.name));
+        if(!dd && drvRes.value && drvRes.value.length) dd = drvRes.value[0];
+        if(dd){
+          const jr = await fetch('https://graph.microsoft.com/v1.0/drives/'+dd.id+'/root:/wmc_draw_schedule.json:/content',
+            {headers:{Authorization:'Bearer '+t2}});
+          if(jr.ok){ s = await jr.json(); if(s) localStorage.setItem(DRAW_SCHEDULE_KEY,JSON.stringify(s)); }
+        }
+      }catch(e){}
+    }
     if(s){
       const now = new Date(new Date().getTime()+9*3600*1000);
-      const sMin = s.min||0; if(now.getUTCDay()===s.day && now.getUTCHours()===s.hour && now.getUTCMinutes()===sMin){
+      const sMin = s.min||0;
+      if(now.getUTCDay()===s.day && now.getUTCHours()===s.hour && now.getUTCMinutes()===sMin){
         try{
           const data = await apiAll(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields`);
           const active = data.value.filter(ev=>ev.fields.Status==='Active');
