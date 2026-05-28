@@ -1593,30 +1593,52 @@ async function saveDrawSchedule(){
   const hour = parseInt(document.getElementById('draw-hour-sel').value);
   const min  = parseInt(document.getElementById('draw-min-sel').value||'0');
   const DAY_KR = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
-  // localStorage 저장 (즉시 적용)
+  // localStorage 즉시 적용
   localStorage.setItem(DRAW_SCHEDULE_KEY, JSON.stringify({day, hour, min}));
   startDrawScheduler();
-  // system_config_final.xlsx WM_ADMIN_TIME 행 업데이트 (드라이브에 JSON 저장)
   try{
     const t2 = await token();
     const drivesRes = await api('/sites/'+siteId+'/drives');
     let docDrive = (drivesRes.value||[]).find(d=>['Documents','문서','Shared Documents'].includes(d.name));
     if(!docDrive && drivesRes.value && drivesRes.value.length) docDrive = drivesRes.value[0];
-    if(docDrive){
-      const json = JSON.stringify({day, hour, min, dayName: DAY_KR[day]});
-      const blob = new Blob([json], {type:'application/json'});
-      const arr  = await blob.arrayBuffer();
-      await fetch(
-        'https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/wmc_draw_schedule.json:/content',
-        { method:'PUT', headers:{ Authorization:'Bearer '+t2, 'Content-Type':'application/json' }, body: blob }
-      );
-      // system_config도 무효화해서 다음 로딩에 반영
-      _sysConfig = null;
+    if(!docDrive) throw new Error('Drive not found');
+    // system_config_final.xlsx 읽기
+    const dlRes = await fetch(
+      'https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/system_config_final.xlsx:/content',
+      {headers:{Authorization:'Bearer '+t2}}
+    );
+    if(!dlRes.ok) throw new Error('xlsx 다운로드 실패');
+    const buf = await dlRes.arrayBuffer();
+    const wb  = XLSX.read(buf, {type:'array'});
+    const ws  = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+    // WM_ADMIN_TIME 행 찾아서 수정 (B=요일명, C=시간, D=분)
+    let found = false;
+    for(let i=0; i<rows.length; i++){
+      if((rows[i][0]||'').toString().trim()==='WM_ADMIN_TIME'){
+        const cellB = XLSX.utils.encode_cell({r:i, c:1});
+        const cellC = XLSX.utils.encode_cell({r:i, c:2});
+        const cellD = XLSX.utils.encode_cell({r:i, c:3});
+        ws[cellB] = {t:'s', v:DAY_KR[day]};
+        ws[cellC] = {t:'n', v:hour};
+        ws[cellD] = {t:'n', v:min};
+        found = true;
+        break;
+      }
     }
-    showToast(`자동 추첨 저장 완료! (${DAY_KR[day]} ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')})`, '✅', 2500);
+    if(!found) throw new Error('WM_ADMIN_TIME 행을 찾을 수 없습니다');
+    // xlsx 다시 업로드
+    const newBuf = XLSX.write(wb, {type:'array', bookType:'xlsx'});
+    const uploadRes = await fetch(
+      'https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/system_config_final.xlsx:/content',
+      {method:'PUT', headers:{Authorization:'Bearer '+t2, 'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}, body:new Blob([newBuf])}
+    );
+    if(!uploadRes.ok) throw new Error('xlsx 업로드 실패 ('+uploadRes.status+')');
+    _sysConfig = null; // 캐시 무효화
+    showToast(`저장 완료! ${DAY_KR[day]} ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} — system_config 반영됨`, '✅', 2800);
   }catch(e){
-    console.warn('[WMC] schedule save to SP failed:', e.message);
-    showToast(`저장됨 (로컬) — system_config 반영은 관리자가 직접 수정해주세요`, '⚠️', 3000);
+    console.warn('[WMC] schedule save failed:', e.message);
+    showToast(`로컬 저장됨. SP 반영 실패: ${e.message}`, '⚠️', 3500);
   }
 }
 
