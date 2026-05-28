@@ -1596,49 +1596,24 @@ async function saveDrawSchedule(){
   // localStorage 즉시 적용
   localStorage.setItem(DRAW_SCHEDULE_KEY, JSON.stringify({day, hour, min}));
   startDrawScheduler();
+  // wmc_draw_schedule.json 에만 저장 (system_config_final.xlsx 수정 안 함 — 서식 보호)
   try{
     const t2 = await token();
     const drivesRes = await api('/sites/'+siteId+'/drives');
     let docDrive = (drivesRes.value||[]).find(d=>['Documents','문서','Shared Documents'].includes(d.name));
     if(!docDrive && drivesRes.value && drivesRes.value.length) docDrive = drivesRes.value[0];
     if(!docDrive) throw new Error('Drive not found');
-    // system_config_final.xlsx 읽기
-    const dlRes = await fetch(
-      'https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/system_config_final.xlsx:/content',
-      {headers:{Authorization:'Bearer '+t2}}
+    const payload = JSON.stringify({day, hour, min, dayName:DAY_KR[day], savedAt: new Date().toISOString()});
+    const upRes = await fetch(
+      'https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/wmc_draw_schedule.json:/content',
+      {method:'PUT', headers:{Authorization:'Bearer '+t2,'Content-Type':'application/json'}, body:payload}
     );
-    if(!dlRes.ok) throw new Error('xlsx 다운로드 실패');
-    const buf = await dlRes.arrayBuffer();
-    const wb  = XLSX.read(buf, {type:'array'});
-    const ws  = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, {header:1});
-    // WM_ADMIN_TIME 행 찾아서 수정 (B=요일명, C=시간, D=분)
-    let found = false;
-    for(let i=0; i<rows.length; i++){
-      if((rows[i][0]||'').toString().trim()==='WM_ADMIN_TIME'){
-        const cellB = XLSX.utils.encode_cell({r:i, c:1});
-        const cellC = XLSX.utils.encode_cell({r:i, c:2});
-        const cellD = XLSX.utils.encode_cell({r:i, c:3});
-        ws[cellB] = {t:'s', v:DAY_KR[day]};
-        ws[cellC] = {t:'n', v:hour};
-        ws[cellD] = {t:'n', v:min};
-        found = true;
-        break;
-      }
-    }
-    if(!found) throw new Error('WM_ADMIN_TIME 행을 찾을 수 없습니다');
-    // xlsx 다시 업로드
-    const newBuf = XLSX.write(wb, {type:'array', bookType:'xlsx'});
-    const uploadRes = await fetch(
-      'https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/system_config_final.xlsx:/content',
-      {method:'PUT', headers:{Authorization:'Bearer '+t2, 'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}, body:new Blob([newBuf])}
-    );
-    if(!uploadRes.ok) throw new Error('xlsx 업로드 실패 ('+uploadRes.status+')');
-    _sysConfig = null; // 캐시 무효화
-    showToast(`저장 완료! ${DAY_KR[day]} ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} — system_config 반영됨`, '✅', 2800);
+    if(!upRes.ok) throw new Error('json 저장 실패 ('+upRes.status+')');
+    _sysConfig = null;
+    showToast(`저장 완료! ${DAY_KR[day]} ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}`, '✅', 2500);
   }catch(e){
     console.warn('[WMC] schedule save failed:', e.message);
-    showToast(`로컬 저장됨. SP 반영 실패: ${e.message}`, '⚠️', 3500);
+    showToast(`로컬에만 저장됨: ${e.message}`, '⚠️', 3000);
   }
 }
 
