@@ -900,7 +900,7 @@ async function showDetail(eventId){
         <td>${vf.Model||'-'}</td>
         <td>${vf.Color||'-'}</td>
         <td>${vf.PlateNo||'-'}</td>
-        <td style="text-align:center">${vApps.filter(a=>a.fields.Status==='Applied'||a.fields.Status==='Winner').length}</td>
+        <td style="text-align:center">${vApps.filter(a=>['Applied','Winner','NotSelected'].includes(a.fields.Status)).length}</td>
         <td>${winner ? winner.fields.ApplicantName||'-' : '-'}</td>
         <td>${appStatusHtml} ${actionBtn}</td>
       </tr>`;
