@@ -592,7 +592,8 @@ async function loadSystemConfig() {
       if (!key || key.startsWith('[') || key.startsWith('■') || key === '설정 키 (KEY)') return;
       cfg[key] = {
         name:  (row[1] || '').toString().trim(),
-        email: (row[2] || '').toString().trim()
+        email: (row[2] || '').toString().trim(),
+        role:  (row[3] || '').toString().trim()
       };
     });
     _sysConfig = cfg;
@@ -1586,22 +1587,85 @@ function initDrawHourSelect(){
   }
 }
 
-function saveDrawSchedule(){
+async function saveDrawSchedule(){
   initDrawHourSelect();
   const day  = parseInt(document.getElementById('draw-day-sel').value);
   const hour = parseInt(document.getElementById('draw-hour-sel').value);
   const min  = parseInt(document.getElementById('draw-min-sel').value||'0');
+  const DAY_KR = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+  // localStorage 저장 (즉시 적용)
   localStorage.setItem(DRAW_SCHEDULE_KEY, JSON.stringify({day, hour, min}));
   startDrawScheduler();
-  showToast(`자동 추첨 저장 완료!`, '✅', 1800);
+  // system_config_final.xlsx WM_ADMIN_TIME 행 업데이트 (드라이브에 JSON 저장)
+  try{
+    const t2 = await token();
+    const drivesRes = await api('/sites/'+siteId+'/drives');
+    let docDrive = (drivesRes.value||[]).find(d=>['Documents','문서','Shared Documents'].includes(d.name));
+    if(!docDrive && drivesRes.value && drivesRes.value.length) docDrive = drivesRes.value[0];
+    if(docDrive){
+      const json = JSON.stringify({day, hour, min, dayName: DAY_KR[day]});
+      const blob = new Blob([json], {type:'application/json'});
+      const arr  = await blob.arrayBuffer();
+      await fetch(
+        'https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/wmc_draw_schedule.json:/content',
+        { method:'PUT', headers:{ Authorization:'Bearer '+t2, 'Content-Type':'application/json' }, body: blob }
+      );
+      // system_config도 무효화해서 다음 로딩에 반영
+      _sysConfig = null;
+    }
+    showToast(`자동 추첨 저장 완료! (${DAY_KR[day]} ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')})`, '✅', 2500);
+  }catch(e){
+    console.warn('[WMC] schedule save to SP failed:', e.message);
+    showToast(`저장됨 (로컬) — system_config 반영은 관리자가 직접 수정해주세요`, '⚠️', 3000);
+  }
 }
 
-function loadDrawSchedule(){
+async function loadDrawSchedule(){
   initDrawHourSelect();
+  // wmc_draw_schedule.json (저장 버튼으로 갱신) 우선 확인
+  try{
+    const t3 = await token();
+    const drivesRes2 = await api('/sites/'+siteId+'/drives');
+    let dd = (drivesRes2.value||[]).find(d=>['Documents','문서','Shared Documents'].includes(d.name));
+    if(!dd && drivesRes2.value && drivesRes2.value.length) dd = drivesRes2.value[0];
+    if(dd){
+      const jr = await fetch('https://graph.microsoft.com/v1.0/drives/'+dd.id+'/root:/wmc_draw_schedule.json:/content',
+        {headers:{Authorization:'Bearer '+t3}});
+      if(jr.ok){
+        const js = await jr.json();
+        if(js && js.day !== undefined){
+          document.getElementById('draw-day-sel').value  = js.day;
+          document.getElementById('draw-hour-sel').value = js.hour;
+          document.getElementById('draw-min-sel').value  = js.min||0;
+          localStorage.setItem(DRAW_SCHEDULE_KEY, JSON.stringify({day:js.day, hour:js.hour, min:js.min||0}));
+          return {day:js.day, hour:js.hour, min:js.min||0};
+        }
+      }
+    }
+  }catch(e){ /* json 없으면 system_config로 */ }
+  try{
+    // system_config WM_ADMIN_TIME: name=요일, email=시간, role=분
+    const cfg = await loadSystemConfig();
+    const t = cfg && cfg['WM_ADMIN_TIME'];
+    if(t && t.name){
+      const DAY_MAP = {'월요일':1,'화요일':2,'수요일':3,'목요일':4,'금요일':5,'토요일':6,'일요일':0,
+                       '월':1,'화':2,'수':3,'목':4,'금':5,'토':6,'일':0};
+      const day  = DAY_MAP[t.name.trim()] !== undefined ? DAY_MAP[t.name.trim()] : parseInt(t.name)||4;
+      const hour = parseInt(t.email)||18;
+      const min  = parseInt(t.role)||0;
+      document.getElementById('draw-day-sel').value  = day;
+      document.getElementById('draw-hour-sel').value = hour;
+      document.getElementById('draw-min-sel').value  = min;
+      // localStorage도 동기화
+      localStorage.setItem(DRAW_SCHEDULE_KEY, JSON.stringify({day, hour, min}));
+      return {day, hour, min};
+    }
+  }catch(e){ console.warn('[WMC] loadDrawSchedule from config:', e.message); }
+  // fallback: localStorage
   try{
     const s = JSON.parse(localStorage.getItem(DRAW_SCHEDULE_KEY)||'null');
     if(!s) return null;
-    document.getElementById('draw-day-sel').value = s.day;
+    document.getElementById('draw-day-sel').value  = s.day;
     document.getElementById('draw-hour-sel').value = s.hour;
     if(s.min!=null) document.getElementById('draw-min-sel').value = s.min;
     return s;
