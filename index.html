@@ -1800,7 +1800,9 @@ async function runDrawForEvent(evId){
   for(const veh of vehs.value.filter(v=>Number(v.fields.EventID)===Number(evId))){
     const vApps = apps.value.filter(a=>Number(a.fields.EventID)===Number(evId)&&Number(a.fields.VehicleID)===Number(veh.id)&&a.fields.Status==='Applied');
     if(!vApps.length) continue;
-    const winner = vApps[Math.floor(Math.random()*vApps.length)];
+    // 자동 추첨: 가장 먼저 지원한 사람 선발 (AppliedDate 오름차순)
+    vApps.sort((a,b)=>new Date(a.fields.AppliedDate||0)-new Date(b.fields.AppliedDate||0));
+    const winner = vApps[0];
     await api(`/sites/${siteId}/lists/${LIST_APPS}/items/${winner.id}`,'PATCH',{fields:{Status:'Winner'}});
     for(const loser of vApps.filter(a=>a.id!==winner.id)){
       const lCoupon = couponData.find(c=>(c.email||'').toLowerCase()===(loser.fields.ApplicantEmail||'').toLowerCase());
