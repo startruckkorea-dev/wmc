@@ -1062,7 +1062,7 @@ async function applyVehicle(eventId, vehicleId, vehicleName){
       // 1. 지원 등록
       loading(true,'신청 처리 중...');
       await api(`/sites/${siteId}/lists/${LIST_APPS}/items`,'POST',{fields:{
-        Title:'WMC-'+new Date().toISOString().slice(0,10)+'-tmp',
+        Title:'WMC-'+new Date(new Date().getTime()+9*3600*1000).toISOString().slice(0,10)+'-tmp',
         EventID:eventId, VehicleID:vehicleId,
         ApplicantEmail:user.email, ApplicantName:user.name,
         Status:'Applied', AppliedDate:new Date().toISOString()
