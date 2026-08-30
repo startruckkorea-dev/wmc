@@ -23,13 +23,18 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 /* ── 헤더 · BU Admin 연락처 / 계정 정보 (APS 공통) ───────────────────
    연락처가 글자로만 나열돼 제목·부제와 구분되지 않던 것을 프레임으로 묶는다.
    클래스 이름에 시스템 이름을 넣지 않아 전 시스템이 같은 정의를 쓴다. */
-.hdr-contact{display:inline-flex;flex-direction:column;gap:1px;margin-top:8px;
-  background:#f4f8fd;border:1px solid #dbe7f5;border-radius:8px;padding:6px 12px 6px 10px}
-.hdr-contact-row{display:flex;align-items:center;gap:7px;font-size:.7rem;line-height:1.42;color:#5a6472}
-/* 라벨이 「BU Admin」 또는 「BU Admin(GL)」 로 길이가 달라, 폭을 고정하는 대신
-   구분선 하나로 나눈다. 폭을 고정하면 가장 긴 라벨에 맞춰 빈 칸이 크게 남는다. */
-.hdr-contact-tag{flex-shrink:0;color:#2b5c9e;font-size:.68rem;font-weight:700;letter-spacing:-.01em;
-  padding-right:7px;border-right:1px solid #cfdff2}
+/* 라벨이 「BU Admin」 ~ 「BU Admin(Customer)」 로 길이가 달라, flex 로 두면
+   구분선이 줄마다 다른 자리에 서고 이메일 시작 위치도 어긋난다.
+   격자로 두고 첫 열을 max-content 로 잡으면 가장 긴 라벨에 맞춰 한 줄로 정렬되면서
+   짧은 라벨 쪽에 빈 칸도 남지 않는다.
+   .hdr-contact-row 는 display:contents 로 두어 마크업을 바꾸지 않고 칸만 넘긴다. */
+.hdr-contact{display:inline-grid;grid-template-columns:max-content 1fr;align-items:center;
+  row-gap:0;margin-top:8px;font-size:.7rem;line-height:1.6;color:#5a6472;
+  background:#f4f8fd;border:1px solid #dbe7f5;border-radius:8px;padding:5px 12px 5px 10px}
+.hdr-contact-row{display:contents}
+/* 위아래 여백을 0 으로 두어 줄마다의 구분선이 하나로 이어져 보인다. */
+.hdr-contact-tag{color:#2b5c9e;font-weight:700;letter-spacing:-.01em;white-space:nowrap;
+  padding:1px 9px 1px 0;margin-right:9px;border-right:1px solid #cfdff2}
 .hdr-contact-mail{color:#3d4756;font-weight:500}
 .hdr-contact-mail a{color:#2b5c9e;text-decoration:none}
 .hdr-contact-mail a:hover{text-decoration:underline}
@@ -40,8 +45,9 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 /* wmc 는 헤더가 짙은 파란 그라데이션에 흰 글씨다. 밝은 배경용 색을 그대로 쓰면
    글자가 배경에 묻히므로 이 시스템에서만 대비를 뒤집는다.
    구조와 클래스 이름은 다른 시스템과 같게 두어 나중에 함께 손볼 수 있게 한다. */
-.header .hdr-contact{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.28)}
-.header .hdr-contact-row{color:rgba(255,255,255,.9)}
+/* .hdr-contact-row 는 display:contents 라 색이 적용되지 않는다.
+   글자색은 격자 컨테이너에 두고 자식이 상속받게 한다. */
+.header .hdr-contact{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.28);color:rgba(255,255,255,.9)}
 /* 배지가 칩에서 구분선 방식으로 바뀌었다. 어두운 헤더에서는 선도 밝게 둔다. */
 .header .hdr-contact-tag{color:#fff;border-right-color:rgba(255,255,255,.32)}
 .header .hdr-contact-mail{color:#fff}
