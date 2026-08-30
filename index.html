@@ -19,6 +19,24 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0f4f8;color:var(--text);font-size:14px}
 /* ── HEADER ── */
+
+/* ── 헤더 · BU Admin 연락처 / 계정 정보 (APS 공통) ───────────────────
+   연락처가 글자로만 나열돼 제목·부제와 구분되지 않던 것을 프레임으로 묶는다.
+   클래스 이름에 시스템 이름을 넣지 않아 전 시스템이 같은 정의를 쓴다. */
+.hdr-contact{display:inline-flex;flex-direction:column;gap:3px;margin-top:10px;
+  background:#f4f8fd;border:1px solid #dbe7f5;border-radius:10px;padding:9px 14px 9px 12px}
+.hdr-contact-row{display:flex;align-items:center;gap:8px;font-size:.72rem;line-height:1.5;color:#5a6472}
+/* 역할 배지 — 폭을 고정해 여러 줄의 이메일 시작 위치가 세로로 맞는다 */
+.hdr-contact-tag{flex-shrink:0;min-width:46px;text-align:center;
+  background:#e3edfa;color:#2b5c9e;border-radius:5px;padding:1px 7px;
+  font-size:.66rem;font-weight:700;letter-spacing:.02em}
+.hdr-contact-mail{color:#3d4756;font-weight:500}
+.hdr-contact-mail a{color:#2b5c9e;text-decoration:none}
+.hdr-contact-mail a:hover{text-decoration:underline}
+/* 계정 정보 — 이름은 진하게, 이메일은 옅게 두 줄로 */
+.hdr-user{display:flex;flex-direction:column;align-items:flex-end;line-height:1.35}
+.hdr-user-name{font-size:.8rem;font-weight:600;color:#323130}
+.hdr-user-mail{font-size:.7rem;color:#8a8886}
 .header{background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .header-left{display:flex;align-items:center;gap:12px}
 .header-icon{font-size:1.4rem}
@@ -204,13 +222,18 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
       <div class="header-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 01-2-2v-4a2 2 0 012-2h1l2-4h12l2 4h1a2 2 0 012 2v4a2 2 0 01-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/></svg></div>
       <div>
         <div class="header-title">STK Weekend Mobility Car</div>
-        <div class="header-sub" id="header-sub-contact">BU Admin 문의 Email: (로딩중...)</div>
+              <div class="hdr-contact">
+          <div class="hdr-contact-row">
+            <span class="hdr-contact-tag">BU Admin</span>
+            <span class="hdr-contact-mail" id="header-sub-contact">-</span>
+          </div>
+      </div>
         <div style="margin-top:4px;display:flex;align-items:center;gap:10px;font-size:.72rem;">
         </div>
       </div>
     </div>
     <div class="header-right">
-      <span id="user-name"></span>
+      <span id="user-name" class="hdr-user"></span>
       <span id="coupon-header" style="background:rgba(255,255,255,.15);padding:4px 10px;border-radius:20px;font-size:.78rem">🎟 쿠폰: -</span>
       <button class="btn-logout" onclick="logout()">로그아웃</button>
     </div>
@@ -512,6 +535,31 @@ function logout(){ msalApp.logoutRedirect(); }
 // ═══════════════════════════════════════════
 // API
 // ═══════════════════════════════════════════
+
+// ── 헤더 표시 헬퍼 (APS 공통) ─────────────────────────────────────────
+// 설정 파일 값을 화면에 그대로 넣지 않는다. textContent·createElement 로만 넣어
+// 값이 바뀌어도 마크업이 깨지거나 태그가 살아나지 않게 한다.
+function setHdrContact(id, email){
+  const el = document.getElementById(id);
+  if (!el) return;
+  const v = String(email || '').trim();
+  if (!v) { el.textContent = '-'; return; }
+  const a = document.createElement('a');
+  a.href = 'mailto:' + v;
+  a.textContent = v;
+  el.textContent = '';
+  el.appendChild(a);
+}
+function setHdrUser(name, mail){
+  const el = document.getElementById('user-name');
+  if (!el) return;
+  el.classList.add('hdr-user');
+  el.textContent = '';
+  const n = document.createElement('span'); n.className = 'hdr-user-name'; n.textContent = String(name || '');
+  const m = document.createElement('span'); m.className = 'hdr-user-mail'; m.textContent = String(mail || '');
+  el.appendChild(n); el.appendChild(m);
+}
+
 async function api(path, method='GET', body=null){
   try {
     const t = await token();
@@ -647,8 +695,7 @@ async function boot(account){
         }
         // WM_CONTACT → 헤더 문의 이메일 표시
         if (cfg['WM_CONTACT'] && cfg['WM_CONTACT'].email) {
-          const subEl = document.getElementById('header-sub-contact') || document.querySelector('.header-sub');
-          if (subEl) subEl.textContent = 'BU Admin 문의 Email: ' + cfg['WM_CONTACT'].email;
+          setHdrContact('header-sub-contact', cfg['WM_CONTACT'].email);
         }
       }
     } catch(cfgErr) {
