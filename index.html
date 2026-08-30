@@ -37,6 +37,16 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 .hdr-user{display:flex;flex-direction:column;align-items:flex-end;line-height:1.35}
 .hdr-user-name{font-size:.8rem;font-weight:600;color:#323130}
 .hdr-user-mail{font-size:.7rem;color:#8a8886}
+/* wmc 는 헤더가 짙은 파란 그라데이션에 흰 글씨다. 밝은 배경용 색을 그대로 쓰면
+   글자가 배경에 묻히므로 이 시스템에서만 대비를 뒤집는다.
+   구조와 클래스 이름은 다른 시스템과 같게 두어 나중에 함께 손볼 수 있게 한다. */
+.header .hdr-contact{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.28)}
+.header .hdr-contact-row{color:rgba(255,255,255,.9)}
+.header .hdr-contact-tag{background:rgba(255,255,255,.22);color:#fff}
+.header .hdr-contact-mail{color:#fff}
+.header .hdr-contact-mail a{color:#fff}
+.header .hdr-user-name{color:#fff}
+.header .hdr-user-mail{color:rgba(255,255,255,.72)}
 .header{background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .header-left{display:flex;align-items:center;gap:12px}
 .header-icon{font-size:1.4rem}
@@ -660,7 +670,7 @@ async function boot(account){
     const me = await api('/me');
     if(me.displayName) user.name = me.displayName;
   } catch(e) { console.warn('Graph /me 실패:', e.message); }
-  document.getElementById('user-name').textContent = user.name;
+  setHdrUser(user.name, user.email);
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 
