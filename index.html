@@ -23,13 +23,13 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 /* ── 헤더 · BU Admin 연락처 / 계정 정보 (APS 공통) ───────────────────
    연락처가 글자로만 나열돼 제목·부제와 구분되지 않던 것을 프레임으로 묶는다.
    클래스 이름에 시스템 이름을 넣지 않아 전 시스템이 같은 정의를 쓴다. */
-.hdr-contact{display:inline-flex;flex-direction:column;gap:3px;margin-top:10px;
-  background:#f4f8fd;border:1px solid #dbe7f5;border-radius:10px;padding:9px 14px 9px 12px}
-.hdr-contact-row{display:flex;align-items:center;gap:8px;font-size:.72rem;line-height:1.5;color:#5a6472}
-/* 역할 배지 — 폭을 고정해 여러 줄의 이메일 시작 위치가 세로로 맞는다 */
-.hdr-contact-tag{flex-shrink:0;min-width:46px;text-align:center;
-  background:#e3edfa;color:#2b5c9e;border-radius:5px;padding:1px 7px;
-  font-size:.66rem;font-weight:700;letter-spacing:.02em}
+.hdr-contact{display:inline-flex;flex-direction:column;gap:1px;margin-top:8px;
+  background:#f4f8fd;border:1px solid #dbe7f5;border-radius:8px;padding:6px 12px 6px 10px}
+.hdr-contact-row{display:flex;align-items:center;gap:7px;font-size:.7rem;line-height:1.42;color:#5a6472}
+/* 라벨이 「BU Admin」 또는 「BU Admin(GL)」 로 길이가 달라, 폭을 고정하는 대신
+   구분선 하나로 나눈다. 폭을 고정하면 가장 긴 라벨에 맞춰 빈 칸이 크게 남는다. */
+.hdr-contact-tag{flex-shrink:0;color:#2b5c9e;font-size:.68rem;font-weight:700;letter-spacing:-.01em;
+  padding-right:7px;border-right:1px solid #cfdff2}
 .hdr-contact-mail{color:#3d4756;font-weight:500}
 .hdr-contact-mail a{color:#2b5c9e;text-decoration:none}
 .hdr-contact-mail a:hover{text-decoration:underline}
@@ -42,7 +42,8 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
    구조와 클래스 이름은 다른 시스템과 같게 두어 나중에 함께 손볼 수 있게 한다. */
 .header .hdr-contact{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.28)}
 .header .hdr-contact-row{color:rgba(255,255,255,.9)}
-.header .hdr-contact-tag{background:rgba(255,255,255,.22);color:#fff}
+/* 배지가 칩에서 구분선 방식으로 바뀌었다. 어두운 헤더에서는 선도 밝게 둔다. */
+.header .hdr-contact-tag{color:#fff;border-right-color:rgba(255,255,255,.32)}
 .header .hdr-contact-mail{color:#fff}
 .header .hdr-contact-mail a{color:#fff}
 .header .hdr-user-name{color:#fff}
