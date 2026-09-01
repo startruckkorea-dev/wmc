@@ -54,8 +54,16 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 .header .hdr-contact-mail a{color:#fff}
 .header .hdr-user-name{color:#fff}
 .header .hdr-user-mail{color:rgba(255,255,255,.72)}
-.header{background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.header-left{display:flex;align-items:center;gap:12px}
+/* 제목과 BU Admin 을 세로로 쌓으면 두 줄이 56px 안에 억지로 들어가 위아래가 붙는다
+   (제목 19 + 칩 30 + 빈 div 4 = 53px, 여백이 위아래 1.5px 씩밖에 남지 않았다).
+   나란히 두면 한 줄이라 여백이 넉넉해지고 칩도 세로 가운데에 놓인다.
+   height 를 min-height 로 바꿔, 창이 좁아 줄바꿈이 일어나면 헤더가 늘어나게 한다. */
+.header{background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;padding:8px 24px;display:flex;align-items:center;justify-content:space-between;min-height:56px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.header-left{display:flex;align-items:center;gap:14px;flex-wrap:wrap;row-gap:6px;min-width:0}
+.header-right{flex-shrink:0}
+/* 가로로 놓이므로 제목과의 간격은 header-left 의 gap 이 맡는다. 위 여백은 뺀다.
+   글자는 한 단계 키운다 — .66rem 은 세로로 쌓였을 때 높이를 줄이려던 값이었다. */
+.header .hdr-contact{margin-top:0;font-size:.7rem;padding:4px 11px 4px 10px}
 .header-icon{font-size:1.4rem}
 .header-title{font-size:1rem;font-weight:700}
 .header-sub{font-size:.72rem;opacity:.75;margin-top:1px}
@@ -237,15 +245,11 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
   <div class="header">
     <div class="header-left">
       <div class="header-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 01-2-2v-4a2 2 0 012-2h1l2-4h12l2 4h1a2 2 0 012 2v4a2 2 0 01-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/></svg></div>
-      <div>
-        <div class="header-title">STK Weekend Mobility Car</div>
-              <div class="hdr-contact">
-          <div class="hdr-contact-row">
-            <span class="hdr-contact-tag">BU Admin</span>
-            <span class="hdr-contact-mail" id="header-sub-contact">-</span>
-          </div>
-      </div>
-        <div style="margin-top:4px;display:flex;align-items:center;gap:10px;font-size:.72rem;">
+      <div class="header-title">STK Weekend Mobility Car</div>
+      <div class="hdr-contact">
+        <div class="hdr-contact-row">
+          <span class="hdr-contact-tag">BU Admin</span>
+          <span class="hdr-contact-mail" id="header-sub-contact">-</span>
         </div>
       </div>
     </div>
@@ -471,7 +475,6 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
       </div>
     </div>
   </div>
-</div>
 
 <!-- Loading Overlay -->
 <div id="loading" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:9999">
