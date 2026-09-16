@@ -154,7 +154,11 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 .vehicle-table .act-cell{display:flex;align-items:center;gap:7px;min-height:26px}
 .vehicle-table tr:last-child td{border-bottom:none}
 .vehicle-table tr:hover td{background:var(--blue-light)}
-.app-status{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700}
+.app-status{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700}
+/* 상태 점 — 배지 글자색(currentColor)을 따라간다. .status-badge 와 같은 방식이다.
+   원형 이모지(🏆✅)는 글꼴마다 크기·정렬이 달라 배지 안에서 삐뚤어 보였다. */
+.app-status::before{content:'';width:6px;height:6px;border-radius:50%;
+  background:currentColor;flex-shrink:0}
 .app-status.applied{background:#e3f2fd;color:#1565c0}
 .app-status.winner{background:var(--green-light);color:var(--green)}
 .app-status.not-selected{background:var(--gray);color:var(--gray3)}
@@ -535,7 +539,7 @@ const COUPON_FILE = 'WMC_Coupons.xlsx'; // SharePoint 문서 라이브러리에 
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-16.4';
+const APP_VERSION = '2026-09-16.5';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 const FORCED_WIN_XLSX   = 'wmc_forced_winners.xlsx';   // 지정 당첨 명단 (관리자가 SharePoint 에 올림)
 const FORCED_WIN_JSON   = 'wmc_forced_winners.json';   // 같은 용도의 JSON (xlsx 가 없을 때)
@@ -549,6 +553,11 @@ let _sysConfig = null;
 
 let user = {}, siteId = '', msalApp = null;
 let allEvents = [], myApplications = [];
+/* 제목·기간 조회용 전체 이벤트. allEvents 는 「추첨 목록」 화면의 상태 필터 결과로
+   덮어써지므로(loadEvents), 필터가 '진행 중' 이면 끝난 이벤트가 빠져 「내 신청 현황」
+   에서 제목을 못 찾고 '이벤트 #30' 같은 폴백이 나왔다.
+   이 맵은 필터와 무관하게 전건을 담는다. */
+let eventsById = new Map();
 let couponData = []; // [{email, name, coupon}]
 let currentEvent = null;
 
@@ -899,6 +908,8 @@ async function loadEvents(){
   loading(true,'이벤트 로딩 중...');
   try{
     const data = await apiAll(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields`);
+    // 필터와 무관한 전건 맵을 먼저 채운다 — 다른 화면이 제목·기간을 여기서 찾는다.
+    eventsById = new Map(data.value.map(ev=>[Number(ev.id), ev]));
     const sorted = data.value.sort((a,b)=>new Date(b.fields.AvailableStart)-new Date(a.fields.AvailableStart));
     allEvents = statusFilter !== 'all'
       ? sorted.filter(ev => (ev.fields.Status||'') === statusFilter)
@@ -973,9 +984,9 @@ function _renderEventGridPage(){
       : isDeadlinePassed ? '신청마감'
       : 'Draft';
     const appBadge = myApp ? (myApp.fields.Status==='Winner'
-      ? '<span class="app-status winner">🏆 당첨</span>'
+      ? '<span class="app-status winner">당첨</span>'
       : myApp.fields.Status==='Applied'
-      ? '<span class="app-status applied">✅ 신청완료</span>'
+      ? '<span class="app-status applied">신청완료</span>'
       : myApp.fields.Status==='NotSelected'
       ? '<span class="app-status not-selected">낙첨</span>'
       : '') : '';
@@ -1039,8 +1050,8 @@ async function showDetail(eventId){
 
       let appStatusHtml = '';
       if(myApp){
-        if(myApp.fields.Status==='Winner') appStatusHtml='<span class="app-status winner">🏆 Winner</span>';
-        else if(myApp.fields.Status==='Applied') appStatusHtml='<span class="app-status applied">✅ Applied</span>';
+        if(myApp.fields.Status==='Winner') appStatusHtml='<span class="app-status winner">Winner</span>';
+        else if(myApp.fields.Status==='Applied') appStatusHtml='<span class="app-status applied">Applied</span>';
         else if(myApp.fields.Status==='NotSelected') appStatusHtml='<span class="app-status not-selected">낙첨</span>';
       } else if(winner){
         appStatusHtml='<span class="app-status not-selected">추첨완료</span>';
@@ -1182,7 +1193,7 @@ async function updateCouponInExcel(email, newCount){
 // ═══════════════════════════════════════════
 async function applyVehicle(eventId, vehicleId, vehicleName){
   const myCoupon = couponData.find(c=>(c.email||'').toLowerCase()===user.email.toLowerCase());
-  const ev = allEvents.find(e=>Number(e.id)===Number(eventId));
+  const ev = eventsById.get(Number(eventId)) || allEvents.find(e=>Number(e.id)===Number(eventId));
   const couponCost = ev ? (ev.fields.CouponCost||1) : 1;
 
   if(!myCoupon || myCoupon.coupon < couponCost){
@@ -1256,7 +1267,7 @@ async function applyVehicle(eventId, vehicleId, vehicleName){
 
 async function cancelApplication(appId, eventId){
   const app = myApplications.find(a=>Number(a.id)===Number(appId));
-  const ev = allEvents.find(e=>Number(e.id)===Number(eventId));
+  const ev = eventsById.get(Number(eventId)) || allEvents.find(e=>Number(e.id)===Number(eventId));
   const couponCost = ev ? (ev.fields.CouponCost||1) : 1;
 
   showConfirmModal('신청을 취소하시겠습니까? 취소 시 쿠폰이 반환됩니다.', async ()=>{
@@ -1338,11 +1349,13 @@ function renderMyPage(){
 
   const html = pageData.map(a=>{
     const f = a.fields;
-    const ev = allEvents.find(e=>Number(e.id)===Number(f.EventID));
+    // 상태 필터에 걸리지 않는 전건 맵에서 찾는다(allEvents 는 필터 결과라 빠질 수 있다).
+    const ev = eventsById.get(Number(f.EventID)) || allEvents.find(e=>Number(e.id)===Number(f.EventID));
     const veh = allVehs.value.find(v=>Number(v.id)===Number(f.VehicleID));
     const vf = veh?.fields||{};
     const competitors = allApps.value.filter(ap=>Number(ap.fields.VehicleID)===Number(f.VehicleID)&&ap.fields.Status!=='NotSelected').length;
-    const statusLabel = f.Status==='Winner'?'🏆 당첨':f.Status==='Applied'?'✅ 신청중':'낙첨';
+    // .app-status 는 ::before 로 점을 그린다(원형 이모지는 글꼴마다 크기·정렬이 튄다).
+    const statusLabel = f.Status==='Winner'?'당첨':f.Status==='Applied'?'신청중':'낙첨';
     const statusClass = f.Status==='Winner'?'winner':f.Status==='Applied'?'applied':'not-selected';
     const couponCost = ev?.fields?.CouponCost||'-';
     return `<div class="card" style="margin-bottom:12px;cursor:pointer" onclick="toggleMyDetail(this)">
