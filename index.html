@@ -117,7 +117,11 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 .event-card-body{padding:14px 16px}
 .event-info-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:.82rem;color:var(--text2)}
 .event-info-row strong{color:var(--text)}
-.status-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700}
+.status-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700}
+/* 상태 점 — 배지의 글자색(currentColor)을 그대로 쓰므로 상태별로 따로 색을 줄 필요가 없다.
+   원형 이모지는 글꼴마다 크기와 세로 정렬이 달라 배지 안에서 삐뚤어 보였다. */
+.status-badge::before{content:'';width:7px;height:7px;border-radius:50%;
+  background:currentColor;flex-shrink:0}
 .status-badge.active{background:var(--blue-light);color:var(--blue)}
 .status-badge.finished{background:var(--gray);color:var(--gray3)}
 .status-badge.draft{background:var(--orange-light);color:var(--orange)}
@@ -411,9 +415,9 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
         <div style="display:flex;gap:8px;align-items:center">
           <select id="adm-evt-filter" onchange="renderAdminEventList()" style="border:1px solid var(--gray2);border-radius:4px;padding:4px 10px;font-size:.8rem">
             <option value="all">전체</option>
-            <option value="Active">🟢 진행 중</option>
-            <option value="Draft">🟡 초안</option>
-            <option value="Finished">⚫ 종료</option>
+            <option value="Active">진행 중</option>
+            <option value="Draft">초안</option>
+            <option value="Finished">종료</option>
           </select>
           <button class="btn btn-secondary btn-sm" onclick="loadAdminEvents()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>새로고침</button>
         </div>
@@ -531,7 +535,7 @@ const COUPON_FILE = 'WMC_Coupons.xlsx'; // SharePoint 문서 라이브러리에 
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-16.3';
+const APP_VERSION = '2026-09-16.4';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 const FORCED_WIN_XLSX   = 'wmc_forced_winners.xlsx';   // 지정 당첨 명단 (관리자가 SharePoint 에 올림)
 const FORCED_WIN_JSON   = 'wmc_forced_winners.json';   // 같은 용도의 JSON (xlsx 가 없을 때)
@@ -963,10 +967,11 @@ function _renderEventGridPage(){
       : isDrawn ? 'drawn'
       : isDeadlinePassed ? 'deadline-passed'
       : 'draft';
-    const badgeLabel = (isActive&&!isDeadlinePassed) ? '🟢 신청 중'
-      : isDrawn ? '✅ 추첨완료'
-      : isDeadlinePassed ? '🔒 신청마감'
-      : '🟡 Draft';
+    // .status-badge 는 ::before 로 점을 그린다. 여기에 원형 이모지를 또 넣으면 두 개가 찍힌다.
+    const badgeLabel = (isActive&&!isDeadlinePassed) ? '신청 중'
+      : isDrawn ? '추첨완료'
+      : isDeadlinePassed ? '신청마감'
+      : 'Draft';
     const appBadge = myApp ? (myApp.fields.Status==='Winner'
       ? '<span class="app-status winner">🏆 당첨</span>'
       : myApp.fields.Status==='Applied'
@@ -1060,7 +1065,9 @@ async function showDetail(eventId){
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div class="detail-title">${f.Title||''}</div>
           <span class="status-badge ${f.Status==='Active'?'active':f.Status==='Finished'?'finished':'draft'}">
-            ${f.Status==='Active'?'🟢 In Progress':f.Status==='Finished'?'⚫ Finished':'🟡 Draft'}
+            <!-- 원형 이모지(🟢⚫🟡)는 글꼴에 따라 크기·정렬이 튀고 색이 배지 색과 어긋난다.
+                 ::before 로 그린 점을 쓰면 배지 글자색을 그대로 따라간다(.status-badge::before). -->
+            ${f.Status==='Active'?'In Progress':f.Status==='Finished'?'Finished':'Draft'}
           </span>
         </div>
         <div class="detail-meta-grid">
@@ -1085,7 +1092,7 @@ async function showDetail(eventId){
       </div>
 
       <div class="card">
-        <div class="card-header"><span class="card-title">🚗 차량 목록</span></div>
+        <div class="card-header"><span class="card-title">차량 목록</span></div>
         <div style="overflow-x:auto">
           <table class="vehicle-table">
             <thead><tr><th>Model</th><th>Color</th><th>Plate No.</th><th style="text-align:center">Number of applicants</th><th>Winner</th><th>Application</th></tr></thead>
@@ -1662,7 +1669,7 @@ function renderAdminEventList(){
       </div>
       <div class="admin-event-actions">
         <button class="btn btn-secondary btn-sm" onclick="editEvent(${ev.id})">✏️ 수정</button>
-        ${f.Status==='Draft'?`<button class="btn btn-success btn-sm" onclick="changeEventStatus(${ev.id},'Active')">🟢 활성화</button>`:''}
+        ${f.Status==='Draft'?`<button class="btn btn-success btn-sm" onclick="changeEventStatus(${ev.id},'Active')">활성화</button>`:''}
         ${f.Status==='Active'?`<button class="btn btn-secondary btn-sm" onclick="changeEventStatus(${ev.id},'Draft')">⏸ 비활성화</button>`:''}
         ${f.Status!=='Finished'?`<button class="btn btn-danger btn-sm" onclick="changeEventStatus(${ev.id},'Finished')">⏹ 종료</button>`:''}
         <span class="status-badge ${f.Status==='Active'?'active':f.Status==='Finished'?'finished':'draft'}" style="margin-left:4px">${f.Status==='Active'?'진행 중':f.Status==='Finished'?'종료':'초안'}</span>
@@ -1673,7 +1680,7 @@ function renderAdminEventList(){
   // ── 진행 중 고정 섹션
   let pinnedHtml = '';
   if(activeItems.length && (filterVal==='all'||filterVal==='Active')){
-    pinnedHtml = `<div class="adm-section-label">🟢 진행 중 — ${activeItems.length}건</div>`
+    pinnedHtml = `<div class="adm-section-label">진행 중 — ${activeItems.length}건</div>`
       + activeItems.map(ev=>renderItem(ev,true)).join('');
   }
 
@@ -1683,7 +1690,7 @@ function renderAdminEventList(){
     const pageDraft  = pageData.filter(ev=>ev.fields.Status==='Draft');
     const pageOther  = pageData.filter(ev=>ev.fields.Status!=='Draft');
     if(pageDraft.length){
-      html += `<hr class="adm-divider"><div class="adm-section-label">🟡 초안 — ${draftItems.length}건</div>`
+      html += `<hr class="adm-divider"><div class="adm-section-label">초안 — ${draftItems.length}건</div>`
             + pageDraft.map(ev=>renderItem(ev,false)).join('');
     }
     if(pageOther.length){
@@ -1691,7 +1698,7 @@ function renderAdminEventList(){
             + pageOther.map(ev=>renderItem(ev,false)).join('');
     }
   } else if(filterVal==='Draft'){
-    html = `<hr class="adm-divider"><div class="adm-section-label">🟡 초안 — ${draftItems.length}건</div>`
+    html = `<hr class="adm-divider"><div class="adm-section-label">초안 — ${draftItems.length}건</div>`
          + pageData.map(ev=>renderItem(ev,false)).join('');
   } else {
     html = pageData.map(ev=>renderItem(ev,false)).join('');
