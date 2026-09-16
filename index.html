@@ -531,7 +531,7 @@ const COUPON_FILE = 'WMC_Coupons.xlsx'; // SharePoint 문서 라이브러리에 
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-16.2';
+const APP_VERSION = '2026-09-16.3';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 const FORCED_WIN_XLSX   = 'wmc_forced_winners.xlsx';   // 지정 당첨 명단 (관리자가 SharePoint 에 올림)
 const FORCED_WIN_JSON   = 'wmc_forced_winners.json';   // 같은 용도의 JSON (xlsx 가 없을 때)
@@ -1256,12 +1256,29 @@ async function cancelApplication(appId, eventId){
     loading(true,'취소 처리 중...');
     try{
       await api(`/sites/${siteId}/lists/${LIST_APPS}/items/${appId}`,'DELETE');
-      // 쿠폰 반환
+      /* 쿠폰 반환 — 신청 행은 이미 지워졌으므로 여기서 실패하면 쿠폰이 사라진다.
+         신청 쪽(applyVehicle)에는 재시도가 있는데 취소 쪽에는 없었다.
+         한 번 더 시도하고, 그래도 안 되면 사용자에게 알려 문의할 수 있게 한다. */
       const myCoupon = couponData.find(c=>(c.email||'').toLowerCase()===user.email.toLowerCase());
       if(myCoupon){
         const newCoupon = myCoupon.coupon + couponCost;
-        await updateCouponInExcel(myCoupon.email, newCoupon);
-        myCoupon.coupon = newCoupon;
+        try{
+          await updateCouponInExcel(myCoupon.email, newCoupon);
+          myCoupon.coupon = newCoupon;
+        }catch(ce1){
+          await new Promise(r=>setTimeout(r,1000));
+          try{
+            await updateCouponInExcel(myCoupon.email, newCoupon);
+            myCoupon.coupon = newCoupon;
+          }catch(ce2){
+            console.error('[WMC] 취소 후 쿠폰 반환 실패:', myCoupon.email, ce2 && ce2.message);
+            loading(false);
+            showToast('신청은 취소됐으나 쿠폰 반환에 실패했습니다. 관리자에게 문의해주세요.', '⚠️', 5000);
+            await Promise.all([loadMyCoupons(), loadMyApplications()]);
+            await showDetail(eventId);
+            return;
+          }
+        }
       }
       await Promise.all([loadMyCoupons(), loadMyApplications()]);
       await showDetail(eventId);
@@ -2014,7 +2031,23 @@ async function acquireDrawLock(evId){
     return 'no-lock';
   }
 }
-async function releaseDrawLock(){ try{ await drivePutJson(DRAW_LOCK_FILE, {eventId:'', by:'', at:0, token:''}); }catch(e){} }
+/* 잠금 해제 — 내 표식일 때만 비운다.
+   예전에는 무조건 비웠는데 그러면 남의 잠금을 지울 수 있었다.
+     · acquireDrawLock 이 'no-lock' 을 돌려준 경우(잠금 파일을 못 읽거나 못 썼을 때)
+       — 그 실패가 일시적이었다면 다른 탭이 정상으로 잠금을 쥐고 있을 수 있는데,
+         이 탭의 finally 가 그것을 비워 두 탭이 동시에 추첨할 길이 열렸다.
+     · 내 추첨이 TTL(10분)을 넘겨 다른 탭이 이어받은 경우 — 역시 그 잠금을 비웠다. */
+async function releaseDrawLock(myToken){
+  if(!myToken || myToken === 'no-lock') return;      // 내가 쥔 잠금이 아니면 건드리지 않는다
+  try{
+    const cur = await driveGet(DRAW_LOCK_FILE);
+    if(cur && cur.token && cur.token !== myToken){
+      console.warn('[WMC] 잠금이 다른 곳으로 넘어가 있어 해제하지 않습니다:', cur.by);
+      return;
+    }
+    await drivePutJson(DRAW_LOCK_FILE, {eventId:'', by:'', at:0, token:''});
+  }catch(e){ console.warn('[WMC] 잠금 해제 실패(10분 뒤 자동 만료):', e && e.message); }
+}
 
 /* 지정 당첨 명단 — SharePoint 문서 라이브러리의 파일에서 읽는다(관리자 화면에 두지 않는다).
    · wmc_forced_winners.xlsx : 첫 시트, 머리글 EventID · Email · VehicleID(선택) · Reason · Enabled
@@ -2133,7 +2166,7 @@ async function runDrawForEvent(evId, opts = {}){
     await apiRetry(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}`,'PATCH',{fields:{Status:'Finished'}});
     console.log('[WMC] 추첨 완료 — 이벤트', evId, '당첨', winnerCount, '건', forcedUsed.length ? ('지정: ' + forcedUsed.join(', ')) : '');
     return {winnerCount, forcedUsed};
-  } finally { _drawBusy = false; await releaseDrawLock(); }
+  } finally { _drawBusy = false; await releaseDrawLock(lock); }
 }
 
 async function runDraw(){
