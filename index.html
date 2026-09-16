@@ -539,7 +539,7 @@ const COUPON_FILE = 'WMC_Coupons.xlsx'; // SharePoint 문서 라이브러리에 
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-16.9';
+const APP_VERSION = '2026-09-16.10';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 const FORCED_WIN_XLSX   = 'wmc_forced_winners.xlsx';   // 지정 당첨 명단 (관리자가 SharePoint 에 올림)
 const FORCED_WIN_JSON   = 'wmc_forced_winners.json';   // 같은 용도의 JSON (xlsx 가 없을 때)
@@ -1160,13 +1160,45 @@ async function loadMyCoupons(){
   }catch(e){ console.warn('쿠폰 로드 실패',e); }
 }
 
+/* 쿠폰 엑셀 한 칸 고치기 — 매번 파일을 새로 읽어 해당 셀만 바꿔 다시 올린다.
+   추첨의 낙첨 환급이 이 함수를 사람 수만큼 순서대로 부른다. 매번 새로 읽으므로
+   앞사람의 변경이 반영된 파일에 덧쓴다(자기들끼리는 충돌하지 않는다).
+
+   재시도가 필요한 이유 — 추첨은 낙첨자 수만큼 다운로드·업로드를 연달아 한다.
+   429(스로틀)를 한 번 맞으면 그 사람만 환급을 못 받고 콘솔에만 기록됐다.
+   다운로드·업로드를 각각 3회까지 다시 시도한다(400·900·2000ms).
+   드라이브 조회는 docDrive() 캐시를 써서 사람마다 반복하지 않는다.
+
+   남은 한계 — 다른 사람이 같은 순간에 신청·취소·관리자 조정으로 이 파일을 쓰면
+   마지막 쓰기가 이긴다. 다만 추첨 시각에는 신청·취소가 마감 검증으로 막히므로
+   추첨 중 경쟁 상대는 관리자 쿠폰 조정뿐이다. 근본 해결은 WMC_Coupons 목록 이전. */
+async function _xlFetchRetry(kind, url, opts){
+  let last = null;
+  for(let i = 0; i <= API_RETRY_DELAYS.length; i++){
+    try{
+      const r = await fetch(url, opts);
+      if(r.ok) return r;
+      const e = new Error(r.status + ' ' + kind);
+      if(![429,500,503,504].includes(r.status) || i === API_RETRY_DELAYS.length) throw e;
+      last = e;
+    }catch(e){
+      last = e;
+      if(i === API_RETRY_DELAYS.length) throw e;
+      if(/^(4\d\d)/.test(String(e.message)) && !/^(429)/.test(String(e.message))) throw e;
+    }
+    console.warn('[WMC] 쿠폰 엑셀 ' + kind + ' 재시도 (' + (i+1) + '/' + API_RETRY_DELAYS.length + '):',
+      String(last && last.message).slice(0,70));
+    await new Promise(r2=>setTimeout(r2, API_RETRY_DELAYS[i]));
+  }
+  throw last;
+}
 async function updateCouponInExcel(email, newCount){
   try{
     const t = await token();
-    const drivesRes = await api('/sites/'+siteId+'/drives');
-    const docDrive = (drivesRes.value||[]).find(d=>['Documents','문서','Shared Documents'].includes(d.name))||drivesRes.value?.[0];
-    const res = await fetch('https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/employee_search.xlsx:/content',{headers:{Authorization:'Bearer '+t}});
-    if(!res.ok) throw new Error('엑셀 로드 실패');
+    const driveId = await docDrive();
+    const res = await _xlFetchRetry('다운로드',
+      'https://graph.microsoft.com/v1.0/drives/'+driveId+'/root:/employee_search.xlsx:/content',
+      {headers:{Authorization:'Bearer '+t}, cache:'no-store'});
     const buf = await res.arrayBuffer();
     const wb = XLSX.read(buf,{type:'array'});
     const ws = wb.Sheets[wb.SheetNames[0]];
@@ -1183,11 +1215,11 @@ async function updateCouponInExcel(email, newCount){
       }
     }
     const newBuf = XLSX.write(wb,{type:'array',bookType:'xlsx'});
-    const putRes = await fetch('https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/employee_search.xlsx:/content',{
-      method:'PUT', headers:{Authorization:'Bearer '+t,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},
-      body:new Blob([newBuf])
-    });
-    if(!putRes.ok) throw new Error('엑셀 저장 실패 ('+putRes.status+')');
+    await _xlFetchRetry('저장',
+      'https://graph.microsoft.com/v1.0/drives/'+driveId+'/root:/employee_search.xlsx:/content',
+      {method:'PUT',
+       headers:{Authorization:'Bearer '+t,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},
+       body:new Blob([newBuf])});
   }catch(e){ console.error('쿠폰 업데이트 실패:',e); throw e; }
 }
 
