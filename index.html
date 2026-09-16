@@ -17,7 +17,17 @@
   --radius:8px;--shadow:0 2px 8px rgba(0,0,0,.12);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0f4f8;color:var(--text);font-size:14px}
+/* 폼 요소는 기본값이 브라우저 글꼴이라 body 폰트를 물려받지 않는다.
+   GW 는 규칙마다 font-family:inherit 을 붙여 뒀는데(10곳), 한 줄로 모으면
+   버튼을 새로 추가할 때 빠뜨릴 일이 없다. flatpickr 달력에도 함께 적용된다. */
+button,input,select,textarea,optgroup{font-family:inherit;font-size:inherit}
+/* 폰트를 APS 계열(Goodwill Approval · IT Ticket · aps · AAC)과 맞춘다.
+   예전에는 'Malgun Gothic' 을 써서 같은 결재 계열인데 글자 모양이 혼자 달랐다.
+   Segoe UI 는 한글 자체 글립이 없어 Windows 가 맑은 고딕으로 대체하는데,
+   그 조합이 APS 다른 화면과 같은 모습이 된다(영문·숫자는 Segoe UI, 한글은 맑은 고딕).
+   font-size 는 GW 와 달리 WMC 가 14px 기준으로 잡혀 있어 그대로 둔다 —
+   지우면 rem 로 쓴 모든 크기가 한꺼번에 커진다. */
+body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font-size:14px}
 /* ── HEADER ── */
 
 /* ── 헤더 · BU Admin 연락처 / 계정 정보 (APS 공통) ───────────────────
@@ -539,7 +549,7 @@ const COUPON_FILE = 'WMC_Coupons.xlsx'; // SharePoint 문서 라이브러리에 
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-16.10';
+const APP_VERSION = '2026-09-16.11';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 const FORCED_WIN_XLSX   = 'wmc_forced_winners.xlsx';   // 지정 당첨 명단 (관리자가 SharePoint 에 올림)
 const FORCED_WIN_JSON   = 'wmc_forced_winners.json';   // 같은 용도의 JSON (xlsx 가 없을 때)
