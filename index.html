@@ -150,8 +150,8 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0
 .vehicle-table .btn-apply,
 .vehicle-table .btn-cancel{padding:0 15px}
 .vehicle-table .app-status{padding:0 11px}
-/* 두 요소가 함께 있을 때 간격 — 칸 안에서 가운데 정렬로 나란히 둔다 */
-.vehicle-table .act-cell{display:flex;align-items:center;gap:7px;min-height:26px}
+/* 값이 없는 칸 — 다른 칸의 '-' 와 같은 톤으로 맞춘다 */
+.vehicle-table .tbl-dash{color:var(--gray3)}
 .vehicle-table tr:last-child td{border-bottom:none}
 .vehicle-table tr:hover td{background:var(--blue-light)}
 .app-status{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700}
@@ -539,7 +539,7 @@ const COUPON_FILE = 'WMC_Coupons.xlsx'; // SharePoint 문서 라이브러리에 
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-16.7';
+const APP_VERSION = '2026-09-16.8';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 const FORCED_WIN_XLSX   = 'wmc_forced_winners.xlsx';   // 지정 당첨 명단 (관리자가 SharePoint 에 올림)
 const FORCED_WIN_JSON   = 'wmc_forced_winners.json';   // 같은 용도의 JSON (xlsx 가 없을 때)
@@ -1063,7 +1063,8 @@ async function showDetail(eventId){
         <td>${vf.PlateNo||'-'}</td>
         <td style="text-align:center">${vApps.filter(a=>['Applied','Winner','NotSelected'].includes(a.fields.Status)).length}</td>
         <td>${winner ? winner.fields.ApplicantName||'-' : '-'}</td>
-        <td><div class="act-cell">${appStatusHtml}${actionBtn}</div></td>
+        <td>${appStatusHtml || '<span class="tbl-dash">-</span>'}</td>
+        <td style="text-align:center">${actionBtn || '<span class="tbl-dash">-</span>'}</td>
       </tr>`;
     }).join('');
 
@@ -1106,8 +1107,10 @@ async function showDetail(eventId){
         <div class="card-header"><span class="card-title">차량 목록</span></div>
         <div style="overflow-x:auto">
           <table class="vehicle-table">
-            <thead><tr><th>Model</th><th>Color</th><th>Plate No.</th><th style="text-align:center">Number of applicants</th><th>Winner</th><th>Application</th></tr></thead>
-            <tbody>${vehRows||'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray3)">등록된 차량이 없습니다</td></tr>'}</tbody>
+            <!-- 신청 상태(Application)와 버튼(Action)을 다른 열로 나눈다. 한 칸에 같이 두면
+                 배지와 버튼이 붙어 지저분하고, 버튼이 있는 행만 가로 폭이 달라 보였다. -->
+            <thead><tr><th>Model</th><th>Color</th><th>Plate No.</th><th style="text-align:center">Number of applicants</th><th>Winner</th><th>Application</th><th style="text-align:center">Action</th></tr></thead>
+            <tbody>${vehRows||'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--gray3)">등록된 차량이 없습니다</td></tr>'}</tbody>
           </table>
         </div>
       </div>
