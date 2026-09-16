@@ -539,7 +539,7 @@ const COUPON_FILE = 'WMC_Coupons.xlsx'; // SharePoint 문서 라이브러리에 
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-16.5';
+const APP_VERSION = '2026-09-16.6';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 const FORCED_WIN_XLSX   = 'wmc_forced_winners.xlsx';   // 지정 당첨 명단 (관리자가 SharePoint 에 올림)
 const FORCED_WIN_JSON   = 'wmc_forced_winners.json';   // 같은 용도의 JSON (xlsx 가 없을 때)
@@ -1206,6 +1206,28 @@ async function applyVehicle(eventId, vehicleId, vehicleName){
 쿠폰 ${couponCost}개가 차감됩니다.`, async ()=>{
     loading(true,'신청 처리 중...');
     try{
+      /* 0-0. 마감·상태를 서버 값으로 다시 확인한다.
+         예전에는 마감을 화면 표시에만 썼다(카드 배지·상세의 빨간 글씨).
+         페이지를 열어 둔 채 마감이 지나면 그 버튼으로 신청이 됐다.
+         더구나 이 시스템은 마감 시각과 추첨 시각이 같아(예: 9/18 16:00),
+         추첨이 도는 중에 들어온 신청은 추첨 스냅샷에 들어가지 않는다.
+         그 결과 쿠폰은 빠져나가고 신청 행은 Finished 이벤트에 'Applied' 로 남아
+         당첨도 낙첨도 아닌 상태가 되며 환급도 받지 못한다. 여기서 막는다. */
+      loading(true,'마감 확인 중...');
+      const _evNow = await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${eventId}?$expand=fields`);
+      const _ef = _evNow.fields || {};
+      if((_ef.Status||'') !== 'Active'){
+        loading(false);
+        showToast('이 이벤트는 신청을 받지 않는 상태입니다. (' + (_ef.Status||'-') + ')', '⚠️', 4000);
+        await loadEvents(); await showDetail(eventId);
+        return;
+      }
+      if(_ef.Deadline && new Date(_ef.Deadline) <= new Date()){
+        loading(false);
+        showToast('신청이 마감되었습니다. (마감 ' + fmtDT(_ef.Deadline) + ')', '⚠️', 4000);
+        await loadEvents(); await showDetail(eventId);
+        return;
+      }
       // 0. 중복 신청 방지: 최신 신청 현황 재확인
       loading(true,'신청 현황 확인 중...');
       const freshAppsRes = await apiAll(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields`);
@@ -1946,9 +1968,13 @@ function startDrawScheduler(){
     const _em = (typeof ADMIN_EMAILS !== 'undefined' ? ADMIN_EMAILS : []).map(e=>e.toLowerCase());
     const _mine = ((user && (user.email||user.username)) || '').toLowerCase();
     if(!siteId || !_mine || !_em.includes(_mine)) return;
-    // 자동 추첨 체크 — localStorage 우선, 없으면 wmc_draw_schedule.json 확인
-    let s = JSON.parse(localStorage.getItem(DRAW_SCHEDULE_KEY)||'null');
-    if(!s){
+    /* 자동 추첨 체크 — 서버 파일(wmc_draw_schedule.json)을 먼저 본다.
+       예전에는 localStorage 를 우선했다. A PC 에서 시각을 바꿔도 B PC 의 탭은
+       자기 localStorage 의 옛 시각으로 돌아, 관리자가 둘이면 서로 다른 시각에
+       추첨이 시작될 수 있었다. 서버 파일이 하나뿐인 기준이 되게 순서를 바꾼다.
+       파일을 못 읽으면 localStorage 로 떨어진다(오프라인에서도 돌게). */
+    let s = null;
+    {
       try{
         const t2 = await token();
         const drvRes = await api('/sites/'+siteId+'/drives');
@@ -1959,7 +1985,8 @@ function startDrawScheduler(){
             {headers:{Authorization:'Bearer '+t2}});
           if(jr.ok){ s = await jr.json(); if(s) localStorage.setItem(DRAW_SCHEDULE_KEY,JSON.stringify(s)); }
         }
-      }catch(e){}
+      }catch(e){ console.warn('[WMC] 추첨 스케줄 파일 조회 실패 — localStorage 로 대체:', e && e.message); }
+      if(!s) s = JSON.parse(localStorage.getItem(DRAW_SCHEDULE_KEY)||'null');
     }
     if(s){
       const now = new Date(new Date().getTime()+9*3600*1000);
