@@ -588,7 +588,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-18.3';
+const APP_VERSION = '2026-09-18.4';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
@@ -1293,6 +1293,21 @@ async function applyVehicle(eventId, vehicleId, vehicleName){
         showToast('신청이 마감되었습니다. (마감 ' + fmtDT(_ef.Deadline) + ')', '⚠️', 4000);
         await loadEvents(); await showDetail(eventId);
         return;
+      }
+      /* 0-1. 쿠폰 잔액도 서버에서 다시 확인한다.
+         화면을 오래 열어 두면 couponData 의 값이 낡아, 이미 다 쓴 쿠폰으로 신청이 통과할 수 있었다.
+         차감은 0 미만으로 내려가지 않으므로 「쿠폰 0 인데 신청은 성사」 가 될 수 있다. 여기서 막는다. */
+      loading(true,'쿠폰 확인 중...');
+      {
+        const _cid = await findCouponItem(user.email);
+        const _cur = _cid ? await apiRetry(`/sites/${siteId}/lists/${LIST_COUPONS}/items/${_cid}?$expand=fields($select=Coupon)`) : null;
+        const _bal = _cur ? Number(_cur.fields.Coupon||0) : 0;
+        if(_bal < couponCost){
+          loading(false);
+          showToast('쿠폰이 부족합니다. (현재 ' + _bal + '개 / 필요 ' + couponCost + '개)', '⚠️', 4000);
+          await loadMyCoupons(); await showDetail(eventId);
+          return;
+        }
       }
       // 0. 중복 신청 방지: 최신 신청 현황 재확인
       loading(true,'신청 현황 확인 중...');
@@ -2498,16 +2513,16 @@ function renderCouponTable(){
         <th style="padding:8px 12px;text-align:center">조정</th>
       </tr></thead>
       <tbody>${pageData.map(c=>`<tr style="border-bottom:1px solid var(--gray2)">
-        <td style="padding:8px 12px">${c.name}</td>
-        <td style="padding:8px 12px;color:var(--text2);font-size:.78rem">${c.email}</td>
+        <td style="padding:8px 12px">${_esc(c.name)}</td>
+        <td style="padding:8px 12px;color:var(--text2);font-size:.78rem">${_esc(c.email)}</td>
         <td style="padding:8px 12px;text-align:center;font-weight:700" id="coupon-val-${btoa(c.email).replace(/=/g,'')}">${c.coupon}</td>
         <td style="padding:8px 12px;text-align:center">
           <div style="display:flex;gap:4px;justify-content:center;align-items:center">
-            <button class="btn btn-danger btn-sm" onclick="stepCouponInput('${c.email}',-1)">−</button>
+            <button class="btn btn-danger btn-sm" onclick="stepCouponInput('${_esc(c.email)}',-1)">−</button>
             <input type="number" id="coupon-inp-${btoa(c.email).replace(/=/g,'')}" value="${c.coupon}" min="0"
               style="width:52px;text-align:center;border:1px solid var(--gray2);border-radius:4px;padding:3px">
-            <button class="btn btn-success btn-sm" onclick="stepCouponInput('${c.email}',1)">＋</button>
-            <button title="적용" onclick="applyCoupon('${c.email}')"
+            <button class="btn btn-success btn-sm" onclick="stepCouponInput('${_esc(c.email)}',1)">＋</button>
+            <button title="적용" onclick="applyCoupon('${_esc(c.email)}')"
               style="background:#0078d4;color:#fff;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:.9rem;line-height:1" title="적용">✓</button>
           </div>
         </td>
