@@ -227,6 +227,29 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
 .modal-box{background:#fff;border-radius:10px;padding:24px;width:90%;max-width:480px;max-height:80vh;overflow-y:auto}
 .modal-title{font-size:1rem;font-weight:700;margin-bottom:16px}
 .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+/* 직원 명단 동기화 모달 */
+.sync-load{padding:28px 0;text-align:center;color:var(--gray3);font-size:.86rem}
+.sync-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.sync-sum div{background:var(--gray1,#f4f5f7);border-radius:8px;padding:10px 12px}
+.sync-sum .k{font-size:.7rem;color:var(--gray3);margin-bottom:2px}
+.sync-sum .v{font-size:1.05rem;font-weight:700;color:var(--text1,#1f2937)}
+.sync-sum .v.hl{color:#2563eb}
+.sync-head{display:flex;align-items:center;justify-content:space-between;margin:2px 0 6px}
+.sync-head b{font-size:.84rem}
+.sync-list{border:1px solid var(--gray2,#e5e7eb);border-radius:8px;max-height:230px;overflow-y:auto}
+.sync-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--gray2,#eef0f3);font-size:.82rem}
+.sync-row:last-child{border-bottom:none}
+.sync-row input{width:15px;height:15px;accent-color:#2563eb;cursor:pointer}
+.sync-row .nm{flex:0 0 130px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sync-row .em{flex:1;color:var(--gray3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sync-none{padding:16px;text-align:center;color:var(--gray3);font-size:.82rem}
+.sync-note{font-size:.72rem;color:var(--gray3);margin-top:8px;line-height:1.5}
+.sync-start{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.8rem;color:var(--text2)}
+.sync-start input{width:70px;border:1px solid var(--gray2,#d1d5db);border-radius:6px;padding:5px 8px;font-size:.82rem}
+.sync-ex{margin-top:12px}
+.sync-ex summary{font-size:.78rem;color:var(--gray3);cursor:pointer}
+.sync-ex .sync-list{margin-top:6px;max-height:150px}
+.sync-prog{font-size:.82rem;color:var(--text2);padding:6px 0}
 /* ── EMPTY ── */
 .empty-state{text-align:center;padding:48px 24px;color:var(--gray3)}
 .empty-icon{font-size:3rem;margin-bottom:12px;display:flex;justify-content:center}
@@ -529,6 +552,20 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
 </div>
 
 <!-- Confirm Modal -->
+<!-- 직원 명단 동기화 — employee_search.xlsx 와 WMC_Coupons 목록을 대조해 없는 사람만 골라 추가한다 -->
+<div class="modal-overlay" id="sync-modal">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-title">👥 직원 명단 동기화</div>
+    <div id="sync-body">
+      <div class="sync-load">직원 명단을 확인하는 중입니다…</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeSyncModal()">닫기</button>
+      <button class="btn btn-primary" id="sync-add-btn" onclick="syncAddSelected()" disabled>추가</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="confirm-modal">
   <div class="modal-box">
     <div class="modal-title" id="confirm-title">확인</div>
@@ -551,7 +588,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-18.2';
+const APP_VERSION = '2026-09-18.3';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
@@ -2287,13 +2324,17 @@ const COUPON_PAGE_SIZE = 10;
 let _couponPage = 1;
 let _couponFiltered = [];
 
-/* 직원 명단 동기화 — employee_search.xlsx(읽기 전용)를 보고 쿠폰 목록에 없는 사람을 만든다.
-   · 새 행: 제목·Email·EngName 을 채우고 쿠폰은 0 으로 시작한다.
-   · 이미 있는 행: 쿠폰 값은 절대 건드리지 않는다. 비어 있던 제목·이름만 채운다.
-   여러 번 눌러도 안전하다(같은 사람을 두 번 만들지 않는다). 신규 입사자가 생기면 다시 누르면 된다. */
+/* 직원 명단 동기화 — employee_search.xlsx(읽기 전용)와 WMC_Coupons 목록을 대조한다.
+   쿠폰 값은 목록이 원장이므로 절대 건드리지 않고, 목록에 없는 사람만 골라서 추가한다.
+   · 모달에 요약(목록 인원 · 명단 인원 · 추가 대상)과 추가 대상 명단을 보여 주고 체크로 고른다.
+   · 시작 쿠폰 수는 입력으로 정한다(기본 0).
+   · 명단에 없는 쿠폰 행(퇴사자 후보)은 접어서 보여 주기만 하고 지우지 않는다. */
+let _syncMissing = [], _syncExtra = [], _syncEmpCount = 0;
+
 async function syncEmployeeCoupons(){
-  if(!confirm('직원 명단(employee_search.xlsx)을 확인해 쿠폰 목록에 없는 사람을 추가합니다.\n기존 쿠폰 값은 바뀌지 않습니다. 진행할까요?')) return;
-  loading(true,'직원 명단 확인 중...');
+  document.getElementById('sync-modal').classList.add('open');
+  document.getElementById('sync-add-btn').disabled = true;
+  document.getElementById('sync-body').innerHTML = '<div class="sync-load">직원 명단을 확인하는 중입니다…</div>';
   try{
     const t = await token();
     const driveId = await docDrive();
@@ -2302,31 +2343,96 @@ async function syncEmployeeCoupons(){
     if(!res.ok) throw new Error('employee_search.xlsx 로드 실패 ('+res.status+')');
     const wb = XLSX.read(await res.arrayBuffer(), {type:'array'});
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
-    const pick = (r, names) => { for(const n of names){ const k2 = Object.keys(r).find(x=>x.trim().toLowerCase()===n); if(k2 && r[k2]) return String(r[k2]).trim(); } return ''; };
-    const emps = rows.map(r=>({ email: pick(r,['email','e-mail']).toLowerCase(), name: pick(r,['engname','name']) }))
-                     .filter(e=>e.email.includes('@'));
+    const pick = (r, names) => { for(const n of names){ const k = Object.keys(r).find(x=>x.trim().toLowerCase()===n); if(k && r[k]) return String(r[k]).trim(); } return ''; };
+    const emps = [];
+    const seen = new Set();
+    rows.forEach(r=>{
+      const email = pick(r,['email','e-mail']).toLowerCase();
+      if(!email.includes('@') || seen.has(email)) return;
+      seen.add(email);
+      emps.push({email, name: pick(r,['engname','name'])});
+    });
     await loadMyCoupons();
     const have = new Map(couponData.map(c=>[c.email.toLowerCase(), c]));
-    let added = 0, filled = 0;
-    for(const e of emps){
-      const cur = have.get(e.email);
-      if(!cur){
-        loading(true,'쿠폰 목록에 추가 중... ('+(added+1)+')');
-        await apiRetry(`/sites/${siteId}/lists/${LIST_COUPONS}/items`,'POST',
-          {fields:{Title:e.email, Email:e.email, EngName:e.name, Coupon:0}});
-        added++;
-      } else if(!cur.name && e.name){
-        await apiRetry(`/sites/${siteId}/lists/${LIST_COUPONS}/items/${cur.id}`,'PATCH',
-          {fields:{Title:cur.email, EngName:e.name}});
-        filled++;
-      }
-    }
-    const extra = couponData.filter(c=>!emps.some(e=>e.email===c.email.toLowerCase()));
-    await loadCouponData();
-    alert('동기화 완료\n\n· 새로 추가: ' + added + '명 (쿠폰 0개로 시작)\n· 이름 보완: ' + filled + '명'
-      + (extra.length ? ('\n· 직원 명단에 없는 쿠폰 행: ' + extra.length + '명 (퇴사자일 수 있어 자동으로 지우지 않습니다)') : ''));
-  }catch(e){ alert('동기화 실패: ' + e.message); }
-  finally{ loading(false); }
+    _syncEmpCount = emps.length;
+    _syncMissing = emps.filter(e=>!have.has(e.email));
+    _syncExtra   = couponData.filter(c=>!seen.has(c.email.toLowerCase()));
+    renderSyncBody();
+  }catch(e){
+    document.getElementById('sync-body').innerHTML =
+      '<div class="sync-none">확인 실패: ' + _esc(e.message) + '</div>';
+  }
+}
+
+function _esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderSyncBody(){
+  const body = document.getElementById('sync-body');
+  body.innerHTML =
+    '<div class="sync-sum">'
+    + '<div><div class="k">쿠폰 목록</div><div class="v">' + couponData.length + '명</div></div>'
+    + '<div><div class="k">직원 명단</div><div class="v">' + _syncEmpCount + '명</div></div>'
+    + '<div><div class="k">추가 대상</div><div class="v hl">' + _syncMissing.length + '명</div></div>'
+    + '</div>'
+    + (_syncMissing.length
+      ? '<div class="sync-head"><b>쿠폰 목록에 없는 직원</b>'
+        + '<label style="font-size:.78rem;color:var(--gray3);display:flex;align-items:center;gap:6px;cursor:pointer">'
+        + '<input type="checkbox" id="sync-all" checked onchange="syncToggleAll(this.checked)" style="width:15px;height:15px;accent-color:#2563eb"> 전체 선택</label></div>'
+        + '<div class="sync-list">' + _syncMissing.map((e,i)=>
+            '<label class="sync-row"><input type="checkbox" class="sync-chk" data-i="' + i + '" checked onchange="syncUpdateBtn()">'
+            + '<span class="nm">' + _esc(e.name || '-') + '</span><span class="em">' + _esc(e.email) + '</span></label>').join('')
+        + '</div>'
+        + '<div class="sync-start">시작 쿠폰 수 <input type="number" id="sync-start" min="0" max="99" value="0" onchange="syncUpdateBtn()"> 개로 추가합니다.</div>'
+      : '<div class="sync-none">추가할 직원이 없습니다. 쿠폰 목록이 직원 명단과 일치합니다.</div>')
+    + (_syncExtra.length
+      ? '<details class="sync-ex"><summary>직원 명단에 없는 쿠폰 행 ' + _syncExtra.length + '명 (퇴사자일 수 있어 자동으로 지우지 않습니다)</summary>'
+        + '<div class="sync-list">' + _syncExtra.map(c=>
+            '<div class="sync-row"><span class="nm">' + _esc(c.name || '-') + '</span><span class="em">' + _esc(c.email) + '</span></div>').join('')
+        + '</div></details>'
+      : '')
+    + '<div class="sync-note">쿠폰 값은 목록이 기준입니다. 이미 있는 사람의 쿠폰은 이 작업으로 바뀌지 않습니다.</div>';
+  syncUpdateBtn();
+}
+
+function syncToggleAll(on){
+  document.querySelectorAll('#sync-body .sync-chk').forEach(c=>{ c.checked = on; });
+  syncUpdateBtn();
+}
+function _syncChecked(){
+  return [...document.querySelectorAll('#sync-body .sync-chk')].filter(c=>c.checked).map(c=>_syncMissing[Number(c.dataset.i)]).filter(Boolean);
+}
+function syncUpdateBtn(){
+  const btn = document.getElementById('sync-add-btn');
+  const n = _syncChecked().length;
+  btn.disabled = n === 0;
+  btn.textContent = n ? (n + '명 추가') : '추가';
+}
+function closeSyncModal(){ document.getElementById('sync-modal').classList.remove('open'); }
+
+async function syncAddSelected(){
+  const targets = _syncChecked();
+  if(!targets.length) return;
+  const start = Math.max(0, Math.min(99, parseInt((document.getElementById('sync-start')||{}).value)||0));
+  const btn = document.getElementById('sync-add-btn');
+  btn.disabled = true;
+  const body = document.getElementById('sync-body');
+  let done = 0; const failed = [];
+  for(const e of targets){
+    body.innerHTML = '<div class="sync-prog">쿠폰 목록에 추가하는 중… ' + (done+1) + ' / ' + targets.length + '</div>'
+      + '<div class="sync-list"><div class="sync-row"><span class="nm">' + _esc(e.name||'-') + '</span><span class="em">' + _esc(e.email) + '</span></div></div>';
+    try{
+      await apiRetry(`/sites/${siteId}/lists/${LIST_COUPONS}/items`,'POST',
+        {fields:{Title:e.email, Email:e.email, EngName:e.name, Coupon:start}});
+      done++;
+    }catch(err){ failed.push(e.email + ' (' + err.message + ')'); }
+  }
+  await loadCouponData();
+  body.innerHTML = '<div class="sync-sum"><div><div class="k">추가 완료</div><div class="v hl">' + done + '명</div></div>'
+    + '<div><div class="k">시작 쿠폰</div><div class="v">' + start + '개</div></div>'
+    + '<div><div class="k">실패</div><div class="v">' + failed.length + '명</div></div></div>'
+    + (failed.length ? '<div class="sync-list">' + failed.map(f=>'<div class="sync-row"><span class="em">' + _esc(f) + '</span></div>').join('') + '</div>' : '')
+    + '<div class="sync-note">쿠폰 관리 표가 새로 고쳐졌습니다. 신규 입사자가 생기면 다시 동기화해 주세요.</div>';
+  btn.textContent = '추가'; btn.disabled = true;
 }
 
 async function loadCouponData(){
