@@ -551,10 +551,8 @@ const COUPON_FILE = 'WMC_Coupons.xlsx'; // SharePoint 문서 라이브러리에 
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-16.12';
+const APP_VERSION = '2026-09-18.1';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
-const FORCED_WIN_XLSX   = 'wmc_forced_winners.xlsx';   // 지정 당첨 명단 (관리자가 SharePoint 에 올림)
-const FORCED_WIN_JSON   = 'wmc_forced_winners.json';   // 같은 용도의 JSON (xlsx 가 없을 때)
 
 const LIST_EVENTS  = 'WMC_Events';
 const LIST_VEHICLES= 'WMC_Vehicles';
@@ -2093,7 +2091,7 @@ function startDrawScheduler(){
 }
 
 // ═══════════════════════════════════════════
-// DRAW 보조 — 드라이브 파일 · 버전 확인 · 선점 잠금 · 지정 당첨
+// DRAW 보조 — 드라이브 파일 · 버전 확인 · 선점 잠금
 // ═══════════════════════════════════════════
 
 // 문서 라이브러리(드라이브) 한 번만 찾아 둔다. 추첨 중 파일을 여러 번 읽으므로 매번 조회하지 않는다.
@@ -2185,36 +2183,6 @@ async function releaseDrawLock(myToken){
   }catch(e){ console.warn('[WMC] 잠금 해제 실패(10분 뒤 자동 만료):', e && e.message); }
 }
 
-/* 지정 당첨 명단 — SharePoint 문서 라이브러리의 파일에서 읽는다(관리자 화면에 두지 않는다).
-   · wmc_forced_winners.xlsx : 첫 시트, 머리글 EventID · Email · VehicleID(선택) · Reason · Enabled
-   · wmc_forced_winners.json : [{eventId, email, vehicleId, reason, enabled}]
-   Enabled 가 N/false/0 이면 무시한다. 파일이 없으면 빈 명단(=평소대로 무작위). */
-async function loadForcedWinners(evId){
-  const out = [];
-  try{
-    const buf = await driveGet(FORCED_WIN_XLSX, 'buf');
-    if(buf){
-      const wb = XLSX.read(buf, {type:'array'});
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
-      rows.forEach(r=>{
-        const get = k => { const key = Object.keys(r).find(x=>x.trim().toLowerCase()===k); return key ? String(r[key]).trim() : ''; };
-        out.push({eventId:get('eventid'), email:get('email').toLowerCase(), vehicleId:get('vehicleid'),
-                  reason:get('reason'), enabled:!/^(n|no|false|0)$/i.test(get('enabled')||'Y')});
-      });
-    }
-  }catch(e){ console.warn('[WMC] 지정 당첨 xlsx 읽기 실패:', e && e.message); }
-  if(!out.length){
-    try{
-      const j = await driveGet(FORCED_WIN_JSON);
-      const arr = Array.isArray(j) ? j : (j && Array.isArray(j.forced) ? j.forced : []);
-      arr.forEach(r=>out.push({eventId:String(r.eventId||r.EventID||''), email:String(r.email||r.Email||'').trim().toLowerCase(),
-        vehicleId:String(r.vehicleId||r.VehicleID||''), reason:String(r.reason||r.Reason||''), enabled:r.enabled !== false}));
-    }catch(e){ console.warn('[WMC] 지정 당첨 json 읽기 실패:', e && e.message); }
-  }
-  const mine = out.filter(x=>x.enabled && x.email && String(x.eventId) === String(evId));
-  if(mine.length) console.log('[WMC] 지정 당첨 명단(' + evId + '):', mine.map(x=>x.email + (x.vehicleId?('@차량'+x.vehicleId):'')).join(', '));
-  return mine;
-}
 
 // ═══════════════════════════════════════════
 // ADMIN: DRAW (추첨)
@@ -2244,14 +2212,12 @@ async function runDrawForEvent(evId, opts = {}){
     }
     // ⑤ 쿠폰을 새로 읽는다 — 오래 열린 탭의 옛 값으로 환급하면 잔액이 틀어진다
     await loadMyCoupons();
-    // ⑥ 지정 당첨 명단 (SharePoint 파일)
-    const forced = await loadForcedWinners(evId);
     const [vehs, apps] = await Promise.all([
       apiAllRetry(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields`),
       apiAllRetry(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields`)
     ]);
     const couponCost = ev.fields.CouponCost||1;
-    let winnerCount = 0; const forcedUsed = [];
+    let winnerCount = 0;
     for(const veh of vehs.value.filter(v=>Number(v.fields.EventID)===Number(evId))){
       /* 이미 당첨자가 있으면 그 사람을 그대로 당첨자로 삼고, 남은 신청자만 낙첨 처리한다.
          vApps 는 'Applied' 만 고르므로, 앞선 시도가 당첨자만 확정하고 중간에 끊겼다면
@@ -2265,16 +2231,11 @@ async function runDrawForEvent(evId, opts = {}){
       const vApps = apps.value.filter(a=>Number(a.fields.EventID)===Number(evId)&&Number(a.fields.VehicleID)===Number(veh.id)&&a.fields.Status==='Applied');
       if(_already && !vApps.length) continue;                  // 이미 다 끝난 차량
       if(!_already && !vApps.length) continue;                 // 신청자가 없는 차량
-      let winner = _already || null, forcedHit = null;
+      let winner = _already || null;
       if(!winner){
-        // 지정 당첨: 이 차량(또는 차량 지정 없음)에 해당하는 명단이 이 차량 신청자 중에 있으면 그 사람을 뽑는다
-        for(const f of forced){
-          if(f.vehicleId && String(f.vehicleId) !== String(veh.id)) continue;
-          const hit = vApps.find(a=>(a.fields.ApplicantEmail||'').trim().toLowerCase() === f.email);
-          if(hit){ winner = hit; forcedHit = f; break; }
-        }
-        if(!winner) winner = vApps[Math.floor(Math.random()*vApps.length)];
-        if(forcedHit){ forcedUsed.push(forcedHit.email + ' → ' + (veh.fields.Model||veh.id)); console.log('[WMC] 지정 당첨 적용:', forcedHit.email, '차량', veh.id, '사유:', forcedHit.reason||'-'); }
+        // 차량별로 신청자 중 한 명을 무작위로 뽑는다. 가중치·지정 당첨 같은 예외는 두지 않는다
+        // (09-18: SharePoint 파일로 특정인을 당첨시키던 지정 당첨 기능을 제거했다).
+        winner = vApps[Math.floor(Math.random()*vApps.length)];
         /* 뽑은 사람이 그 사이 취소했으면(404) 이 차량은 이번에 건너뛴다.
            남은 신청자로 다시 뽑는 것이 맞지만, 조회 스냅샷이 이미 낡았으므로
            다음 실행에서 새 목록으로 처리하는 편이 안전하다(이벤트는 아래에서
@@ -2324,8 +2285,8 @@ async function runDrawForEvent(evId, opts = {}){
     }
     // ⑦ 이벤트 종료
     await apiRetry(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}`,'PATCH',{fields:{Status:'Finished'}});
-    console.log('[WMC] 추첨 완료 — 이벤트', evId, '당첨', winnerCount, '건', forcedUsed.length ? ('지정: ' + forcedUsed.join(', ')) : '');
-    return {winnerCount, forcedUsed};
+    console.log('[WMC] 추첨 완료 — 이벤트', evId, '당첨', winnerCount, '건');
+    return {winnerCount};
   } finally { _drawBusy = false; await releaseDrawLock(lock); }
 }
 
@@ -2337,8 +2298,7 @@ async function runDraw(){
     try{
       const r = await runDrawForEvent(evId);
       if(r){
-        alert('✅ 추첨 완료!\n총 ' + r.winnerCount + '명의 당첨자가 선정되었습니다.'
-          + (r.forcedUsed.length ? '\n\n지정 당첨 적용:\n· ' + r.forcedUsed.join('\n· ') : ''));
+        alert('✅ 추첨 완료!\n총 ' + r.winnerCount + '명의 당첨자가 선정되었습니다.');
       }
       await loadAdminEvents();
     }catch(e){ alert('추첨 실패: '+e.message); }
