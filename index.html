@@ -258,6 +258,10 @@ tbody tr:hover td{background:#fafbfd}
 .coupon-lead{margin:0 0 12px;font-size:.78rem;line-height:1.6;color:var(--text2,#4b5563);background:#f8fafc;
   border:1px solid var(--gray2,#e5e7eb);border-left:3px solid var(--blue,#2563eb);border-radius:6px;padding:9px 12px}
 .coupon-lead b{color:var(--text,#111827);font-weight:700}
+/* 쿠폰 목록 행 삭제 — 평소에는 옅게, 마우스를 올리면 붉게 */
+.btn-row-del{background:none;border:none;padding:4px;border-radius:6px;cursor:pointer;color:#9aa0a6;line-height:0}
+.btn-row-del svg{width:15px;height:15px}
+.btn-row-del:hover{background:#fdf3f4;color:#a4262c}
 /* 추첨 방식 안내 (신청자 화면) */
 .how{background:#fff;border:1px solid var(--gray2,#e5e7eb);border-radius:10px;padding:12px 16px;margin:28px 0 16px}
 .how[open] .how-arrow{transform:rotate(90deg)}
@@ -733,7 +737,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-19.12';
+const APP_VERSION = '2026-09-19.13';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
@@ -2627,6 +2631,43 @@ const COUPON_PAGE_SIZE = 10;
 let _couponPage = 1;
 let _couponFiltered = [];
 
+/* 쿠폰 목록에서 한 사람을 지운다(퇴사자 정리).
+   · 추첨 대기 중인 신청(Applied)이 남아 있으면 막는다 — 지우면 낙첨 환급이 갈 곳을 잃는다.
+   · 신청 기록(WMC_Applications)은 건드리지 않는다. 지난 당첨·낙첨 이력은 그대로 남는다.
+   · 쿠폰이 남아 있으면 한 번 더 확인한다. */
+async function removeCouponRow(email){
+  const em = String(email||'').trim().toLowerCase();
+  const c = couponData.find(x=>(x.email||'').toLowerCase()===em);
+  if(!c) return;
+  loading(true,'신청 내역 확인 중...');
+  let pending = 0;
+  try{
+    const res = await apiAllRetry(`/sites/${siteId}/lists/${LIST_APPS}/items?$expand=fields($select=ApplicantEmail,Status)&$top=999`);
+    pending = (res.value||[]).filter(a =>
+      String(a.fields.ApplicantEmail||'').toLowerCase() === em &&
+      String(a.fields.Status||'') === 'Applied').length;
+  }catch(e){ loading(false); alert('신청 내역을 확인하지 못했습니다.\n\n' + e.message); return; }
+  loading(false);
+  if(pending){
+    alert(`${c.name || em} 님은 아직 추첨을 기다리는 신청이 ${pending}건 있습니다.\n\n` +
+          '지금 지우면 낙첨되어도 쿠폰이 돌아갈 자리가 없습니다.\n추첨이 끝난 뒤에 지워 주세요.');
+    return;
+  }
+  const warn = c.coupon > 0 ? `\n\n남은 쿠폰 ${c.coupon}개도 함께 사라집니다.` : '';
+  if(!confirm(`쿠폰 목록에서 지울까요?\n\n· ${c.name || '-'}\n· ${c.email}${warn}\n\n` +
+              '지난 신청·당첨 기록은 그대로 남습니다. 다시 필요하면 [직원 추가]로 불러올 수 있습니다.')) return;
+  loading(true,'삭제 중...');
+  try{
+    await apiRetry(`/sites/${siteId}/lists/${LIST_COUPONS}/items/${c.id}`,'DELETE');
+    couponData = couponData.filter(x=>x!==c);
+    filterCoupon();
+    const n = document.getElementById('coupon-fold-n');
+    if(n) n.textContent = couponData.length ? couponData.length + '명' : '';
+    showToast('쿠폰 목록에서 지웠습니다.', '✅', 2000);
+  }catch(e){ alert('삭제 실패: ' + e.message); }
+  finally{ loading(false); }
+}
+
 /* 직원 명단 동기화 — employee_search.xlsx(읽기 전용)와 WMC_Coupons 목록을 대조한다.
    쿠폰 값은 목록이 원장이므로 절대 건드리지 않고, 목록에 없는 사람만 골라서 추가한다.
    · 모달에 요약(목록 인원 · 명단 인원 · 추가 대상)과 추가 대상 명단을 보여 주고 체크로 고른다.
@@ -2814,6 +2855,7 @@ function renderCouponTable(){
         <th style="padding:8px 12px;text-align:left">이메일</th>
         <th style="padding:8px 12px;text-align:center">쿠폰</th>
         <th style="padding:8px 12px;text-align:center">조정</th>
+        <th style="padding:8px 12px;text-align:center;width:62px">관리</th>
       </tr></thead>
       <tbody>${pageData.map(c=>`<tr style="border-bottom:1px solid var(--gray2)">
         <td style="padding:8px 12px">${_esc(c.name)}</td>
@@ -2828,6 +2870,12 @@ function renderCouponTable(){
             <button title="적용" onclick="applyCoupon('${_esc(c.email)}')"
               style="background:#0078d4;color:#fff;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:.9rem;line-height:1" title="적용">✓</button>
           </div>
+        </td>
+        <td style="padding:8px 12px;text-align:center">
+          <button class="btn-row-del" title="쿠폰 목록에서 삭제 (퇴사자 정리)"
+            onclick="removeCouponRow('${_esc(c.email)}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+          </button>
         </td>
       </tr>`).join('')}</tbody>
     </table>
