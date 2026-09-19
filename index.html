@@ -248,6 +248,15 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
 .coupon-lead{margin:0 0 12px;font-size:.78rem;line-height:1.6;color:var(--text2,#4b5563);background:#f8fafc;
   border:1px solid var(--gray2,#e5e7eb);border-left:3px solid var(--blue,#2563eb);border-radius:6px;padding:9px 12px}
 .coupon-lead b{color:var(--text,#111827);font-weight:700}
+/* 추첨 방식 안내 (신청자 화면) */
+.how{background:#fff;border:1px solid var(--gray2,#e5e7eb);border-radius:10px;padding:12px 16px;margin-bottom:16px}
+.how-t{display:flex;align-items:center;gap:7px;font-size:.84rem;font-weight:700;color:var(--blue,#2563eb);cursor:pointer;list-style:none}
+.how-t::-webkit-details-marker{display:none}
+.how-ic{width:15px;height:15px;flex-shrink:0}
+.how-l{margin:10px 0 0;padding-left:18px;font-size:.8rem;line-height:1.75;color:var(--text2,#4b5563)}
+.how-l li{margin-bottom:2px}
+.how-l b{color:var(--text,#111827);font-weight:700}
+.how-n{margin:8px 0 0;font-size:.74rem;color:var(--gray3,#6b7280);line-height:1.6}
 .sync-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
 .sync-sum div{background:var(--gray1,#f4f5f7);border-radius:8px;padding:10px 12px}
 .sync-sum .k{font-size:.7rem;color:var(--gray3);margin-bottom:2px}
@@ -379,6 +388,22 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
       </div>
     </div>
     <div id="event-grid" class="event-grid"></div>
+    <!-- 추첨 방식 안내 — IT가 아닌 신청자도 한 번에 이해할 수 있게 -->
+    <details class="how" open>
+      <summary class="how-t">
+        <svg class="how-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        추첨은 이렇게 진행됩니다
+      </summary>
+      <ol class="how-l">
+        <li><b>신청</b> — 원하는 차량을 골라 신청하면 <b>쿠폰이 먼저 차감</b>됩니다. 한 이벤트에 한 번만 신청할 수 있습니다.</li>
+        <li><b>취소</b> — 마감 전에는 취소할 수 있고, 그때 <b>쿠폰은 바로 돌려받습니다</b>.</li>
+        <li><b>마감</b> — 마감 시각이 지나면 신청·취소가 모두 닫힙니다.</li>
+        <li><b>추첨</b> — 마감 뒤 관리자가 추첨합니다. <b>차량 한 대에 신청자 한 명</b>을 완전히 <b>무작위</b>로 뽑습니다. 먼저 신청한 순서나 쿠폰 수는 영향을 주지 않습니다.</li>
+        <li><b>결과</b> — 당첨되면 쿠폰은 그대로 쓰인 것이 되고, <b>낙첨되면 쿠폰이 자동으로 환급</b>됩니다. 결과는 「내 신청」에서 확인하세요.</li>
+      </ol>
+      <p class="how-n">차량이 여러 대인 이벤트는 차량마다 따로 추첨합니다. 같은 사람이 두 대에 당첨되지는 않습니다.</p>
+    </details>
+
     <div id="list-pagination" class="pagination"></div>
   </div>
 
@@ -503,7 +528,9 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
       <div class="card-header">
         <span class="card-title">이벤트 관리</span>
         <div style="display:flex;gap:8px;align-items:center">
-          <select id="adm-evt-filter" onchange="renderAdminEventList()" style="border:1px solid var(--gray2);border-radius:4px;padding:4px 10px;font-size:.8rem">
+          <input id="adm-evt-q" type="search" placeholder="이벤트 제목 검색..." oninput="_evtPage=1;renderAdminEventList()"
+                 style="border:1px solid var(--gray2);border-radius:4px;padding:5px 10px;font-size:.8rem;min-width:180px">
+          <select id="adm-evt-filter" onchange="_evtPage=1;renderAdminEventList()" style="border:1px solid var(--gray2);border-radius:4px;padding:4px 10px;font-size:.8rem">
             <option value="all">전체</option>
             <option value="Active">진행 중</option>
             <option value="Draft">초안</option>
@@ -682,7 +709,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-19.4';
+const APP_VERSION = '2026-09-19.5';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
@@ -1843,7 +1870,7 @@ async function saveEvent(forceStatus){
 }
 
 // ── 이벤트 관리 페이지네이션 ──
-const EVT_PAGE_SIZE = 10;
+const EVT_PAGE_SIZE = 5;   // 기타·초안 이벤트는 5건씩 나눠 본다(09-19)
 let _evtPage = 1;
 let _evtData = [];
 
@@ -1862,10 +1889,14 @@ async function loadAdminEvents(){
 
 function renderAdminEventList(){
   const filterVal = (document.getElementById('adm-evt-filter')||{value:'all'}).value;
+  /* 제목 검색 — 이벤트가 쌓이면 「기타 이벤트」 가 길어져 찾기 어렵다. 진행 중 섹션에도 같이 적용한다. */
+  const q = ((document.getElementById('adm-evt-q')||{value:''}).value||'').trim().toLowerCase();
+  const match = ev => !q || String(ev.fields.Title||'').toLowerCase().includes(q);
+  const src = _evtData.filter(match);
   // Active → Draft → Finished 순 고정 정렬
-  const activeItems = _evtData.filter(ev=>ev.fields.Status==='Active');
-  const draftItems  = _evtData.filter(ev=>ev.fields.Status==='Draft');
-  const otherItems  = _evtData.filter(ev=>ev.fields.Status!=='Active'&&ev.fields.Status!=='Draft');
+  const activeItems = src.filter(ev=>ev.fields.Status==='Active');
+  const draftItems  = src.filter(ev=>ev.fields.Status==='Draft');
+  const otherItems  = src.filter(ev=>ev.fields.Status!=='Active'&&ev.fields.Status!=='Draft');
 
   // 필터에 따라 페이지네이션 대상 결정
   let pagedSource;
@@ -1914,7 +1945,7 @@ function renderAdminEventList(){
             + pageDraft.map(ev=>renderItem(ev,false)).join('');
     }
     if(pageOther.length){
-      html += `<hr class="adm-divider"><div class="adm-section-label">기타 이벤트</div>`
+      html += `<hr class="adm-divider"><div class="adm-section-label">기타 이벤트 — ${otherItems.length}건</div>`
             + pageOther.map(ev=>renderItem(ev,false)).join('');
     }
   } else if(filterVal==='Draft'){
@@ -1935,7 +1966,7 @@ function renderAdminEventList(){
 
   const noItems = !pinnedHtml && !html;
   document.getElementById('admin-event-list').innerHTML =
-    (noItems ? '<div style="color:var(--gray3);padding:12px">이벤트가 없습니다</div>'
+    (noItems ? ('<div style="color:var(--gray3);padding:12px">' + (q ? '검색 결과가 없습니다' : '이벤트가 없습니다') + '</div>')
               : pinnedHtml + html) + pager;
 }
 
