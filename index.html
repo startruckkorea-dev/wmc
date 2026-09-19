@@ -117,6 +117,9 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
 .card-fold[aria-expanded="true"] .card-fold-ic{transform:rotate(90deg)}
 .card-fold:hover .card-title{color:var(--blue,#2563eb)}
 .card-fold-n{font-size:.72rem;color:var(--gray3,#6b7280);font-weight:500}
+/* 아이콘이 든 버튼은 글자와 세로 가운데를 맞춘다. 예전에는 svg 가 글줄 기준선에 걸려 위로 떠 보였다. */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn .dg-ic{width:14px;height:14px}
 .card-header .card-tools .btn{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .card-header .card-tools .btn svg{width:13px;height:13px;flex-shrink:0}
 .card-title{font-weight:700;font-size:.95rem}
@@ -239,6 +242,12 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
 .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
 /* 직원 명단 동기화 모달 */
 .sync-load{padding:28px 0;text-align:center;color:var(--gray3);font-size:.86rem}
+.sync-lead{margin:2px 0 14px;font-size:.78rem;line-height:1.6;color:var(--text2,#4b5563);background:#f8fafc;
+  border:1px solid var(--gray2,#e5e7eb);border-left:3px solid var(--blue,#2563eb);border-radius:6px;padding:9px 12px}
+.sync-lead b{color:var(--text,#111827);font-weight:700}
+.coupon-lead{margin:0 0 12px;font-size:.78rem;line-height:1.6;color:var(--text2,#4b5563);background:#f8fafc;
+  border:1px solid var(--gray2,#e5e7eb);border-left:3px solid var(--blue,#2563eb);border-radius:6px;padding:9px 12px}
+.coupon-lead b{color:var(--text,#111827);font-weight:700}
 .sync-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
 .sync-sum div{background:var(--gray1,#f4f5f7);border-radius:8px;padding:10px 12px}
 .sync-sum .k{font-size:.7rem;color:var(--gray3);margin-bottom:2px}
@@ -420,10 +429,13 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
         </button>
         <div class="card-tools">
           <button class="btn btn-secondary btn-sm" onclick="loadCouponData()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>새로고침</button>
-          <button class="btn btn-primary btn-sm" onclick="syncEmployeeCoupons()" title="직원 명단(employee_search.xlsx)과 대조해 쿠폰 목록에 없는 직원을 추가합니다"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>직원 추가</button>
+          <button class="btn btn-primary btn-sm" onclick="syncEmployeeCoupons()" title="Flex(STK 인사시스템)에서 내려받은 직원 명단과 대조해, 쿠폰 목록에 없는 직원을 추가합니다. 쿠폰은 0개로 시작합니다."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>직원 추가</button>
         </div>
       </div>
       <div class="card-body" id="coupon-card-body" style="display:none">
+        <p class="coupon-lead">직원 명단은 <b>Flex(STK 인사시스템)</b> 자료를 주기적으로 내려받아 쓰기 때문에
+          입·퇴사가 이 표에 바로 반영되지 않습니다. 새로 온 직원은 <b>[직원 추가]</b>로 불러오세요
+          — <b>쿠폰 0개</b>로 들어오므로 추가한 뒤 수를 지정하면 됩니다.</p>
         <div id="coupon-admin-table"></div>
       </div>
     </div>
@@ -631,7 +643,13 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
 <!-- 직원 명단 동기화 — employee_search.xlsx 와 WMC_Coupons 목록을 대조해 없는 사람만 골라 추가한다 -->
 <div class="modal-overlay" id="sync-modal">
   <div class="modal-box" style="max-width:640px">
-    <div class="modal-title">👥 직원 명단 동기화</div>
+    <div class="modal-title" style="display:flex;align-items:center;gap:7px">
+      <svg class="dg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      직원 추가
+    </div>
+    <p class="sync-lead">직원 명단은 <b>Flex(STK 인사시스템)</b>에서 주기적으로 내려받아 저장되는 자료라,
+      입·퇴사가 <b>쿠폰 관리에 바로 반영되지 않습니다</b>. 아래에서 쿠폰 목록에 없는 직원을 골라 추가하세요.
+      <b>쿠폰은 0개로 시작</b>하므로, 추가한 뒤 쿠폰 수를 지정해 주세요(아래에서 시작 수를 정할 수도 있습니다).</p>
     <div id="sync-body">
       <div class="sync-load">직원 명단을 확인하는 중입니다…</div>
     </div>
@@ -664,7 +682,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-19.3';
+const APP_VERSION = '2026-09-19.4';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
