@@ -254,6 +254,26 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
 .sync-ex summary{font-size:.78rem;color:var(--gray3);cursor:pointer}
 .sync-ex .sync-list{margin-top:6px;max-height:150px}
 .sync-prog{font-size:.82rem;color:var(--text2);padding:6px 0}
+/* 추첨 실행 안내 */
+.dg{border:1px solid var(--gray2,#e5e7eb);border-radius:8px;padding:12px 14px;margin-bottom:14px;background:#fff}
+.dg-t{display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:var(--blue);margin-bottom:8px}
+.dg ol{margin:0;padding-left:18px;font-size:.8rem;line-height:1.75;color:var(--text2)}
+.dg ol b{color:var(--text1,#1f2937)}
+.dg .tip{display:flex;gap:8px;align-items:flex-start;margin-top:10px;background:#fff8e6;border:1px solid #ffe3a3;
+  border-left:3px solid #d98300;border-radius:6px;padding:8px 11px;font-size:.78rem;line-height:1.6;color:#8a5a00}
+.dg .tip b{color:#7a4b00}
+.dg .tip-ic{flex-shrink:0;width:16px;height:16px;border-radius:50%;background:#d98300;color:#fff;font-size:.66rem;
+  font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.dg-note{font-size:.76rem;color:var(--gray3);line-height:1.6;margin-top:8px}
+.sc-scope{display:flex;gap:14px;align-items:center;margin:10px 0 6px;font-size:.8rem;color:var(--text2)}
+.sc-scope label{display:flex;align-items:center;gap:5px;cursor:pointer}
+.sc-scope input{width:14px;height:14px;accent-color:#2563eb;cursor:pointer}
+.sc-list{border:1px solid var(--gray2,#e5e7eb);border-radius:6px;max-height:150px;overflow-y:auto;background:#fff}
+.sc-row{display:flex;align-items:center;gap:8px;padding:6px 11px;border-bottom:1px solid #eef0f3;font-size:.79rem}
+.sc-row:last-child{border-bottom:none}
+.sc-row input{width:14px;height:14px;accent-color:#2563eb;cursor:pointer}
+.sc-row .dl{margin-left:auto;color:var(--gray3);font-size:.72rem}
+.sc-empty{padding:12px;text-align:center;color:var(--gray3);font-size:.78rem}
 /* ── EMPTY ── */
 .empty-state{text-align:center;padding:48px 24px;color:var(--gray3)}
 .empty-icon{font-size:3rem;margin-bottom:12px;display:flex;justify-content:center}
@@ -502,7 +522,18 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
         <span class="card-title">추첨 실행</span>
       </div>
       <div class="card-body">
-        <p style="font-size:.85rem;color:var(--text2);margin-bottom:12px">수동 추첨 또는 자동 추첨 시간을 설정할 수 있습니다.</p>
+        <p style="font-size:.85rem;color:var(--text2);margin-bottom:12px">추첨은 <b>차량마다 신청자 중 한 명을 무작위로</b> 뽑고, 낙첨자에게는 쿠폰을 자동으로 돌려줍니다. 되돌릴 수 없으니 아래 안내를 먼저 읽어 주세요.</p>
+
+        <!-- 자동 추첨 안내 -->
+        <div class="dg">
+          <div class="dg-t">🕒 자동 추첨은 이렇게 돕니다</div>
+          <ol>
+            <li>정한 <b>요일·시각</b>이 되면 <b>진행 중(Active)인 이벤트 전부</b>를 차례로 추첨합니다.</li>
+            <li>특정 이벤트만 돌리고 싶으면 아래에서 <b>「선택한 이벤트만」</b>으로 바꾸고 대상을 고르세요.</li>
+            <li><b>마감 시각이 아직 지나지 않은 이벤트는 건너뜁니다.</b> 추첨 도중 들어온 신청이 처리되지 않은 채 남는 것을 막기 위해서입니다.</li>
+            <li>자동 추첨은 <b>관리자 화면이 열려 있는 동안</b>에만 동작합니다. 그 시각에 아무도 열어 두지 않았다면 수동으로 돌려 주세요.</li>
+          </ol>
+        </div>
 
         <!-- 자동 추첨 시간 설정 -->
         <div style="background:#f8fafc;border:1px solid var(--gray2);border-radius:8px;padding:12px;margin-bottom:14px">
@@ -529,6 +560,32 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
               <option value="50">50</option>
             </select>
             <button class="btn btn-secondary btn-sm" onclick="saveDrawSchedule()" style="white-space:nowrap">💾 저장</button>
+          </div>
+
+          <div class="sc-scope">
+            <span style="font-weight:600;color:var(--text1)">대상</span>
+            <label><input type="radio" name="draw-scope" value="all" checked onchange="onDrawScopeChange()"> 진행 중인 이벤트 전부</label>
+            <label><input type="radio" name="draw-scope" value="selected" onchange="onDrawScopeChange()"> 선택한 이벤트만</label>
+          </div>
+          <div id="draw-scope-list" style="display:none">
+            <div class="sc-list" id="draw-scope-items"><div class="sc-empty">이벤트를 불러오는 중…</div></div>
+            <div class="dg-note">체크한 이벤트만 자동 추첨합니다. 새 이벤트를 만들면 여기서 다시 체크해 주세요.</div>
+          </div>
+        </div>
+
+        <!-- 수동 추첨 안내 -->
+        <div class="dg">
+          <div class="dg-t">✋ 수동 추첨 순서</div>
+          <ol>
+            <li>이 화면을 <b>Ctrl + F5</b>로 새로 고칩니다. 오래 열어 둔 화면은 추첨이 거부됩니다.</li>
+            <li>아래에서 <b>추첨할 이벤트</b>를 고릅니다. 진행 중인 이벤트만 나옵니다.</li>
+            <li><b>[추첨 실행]</b>을 누르고 확인합니다. 차량마다 당첨자 한 명이 정해지고, 낙첨자 쿠폰이 환급됩니다.</li>
+            <li><b>완료 알림이 뜰 때까지 창을 닫지 마세요.</b> 신청자가 많으면 몇 분 걸릴 수 있습니다.</li>
+            <li>끝나면 이벤트가 <b>종료</b>로 바뀌고, 신청자 화면에 당첨·낙첨이 표시됩니다. <b>되돌릴 수 없습니다.</b></li>
+          </ol>
+          <div class="tip">
+            <span class="tip-ic">!</span>
+            <span><b>마감 시각이 지난 뒤, 1분 이상 여유를 두고</b> 실행해 주세요. 마감 직전에 누른 신청이 서버에 저장되는 중일 수 있는데, 그 사이에 추첨이 돌면 그 신청은 <b>당첨도 낙첨도 아닌 상태로 남고 쿠폰도 돌아가지 않습니다.</b></span>
           </div>
         </div>
 
@@ -594,7 +651,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-18.5';
+const APP_VERSION = '2026-09-19.1';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
@@ -1765,7 +1822,8 @@ async function loadAdminEvents(){
     const drawSel = document.getElementById('draw-event-sel');
     drawSel.innerHTML='<option value="">추첨할 이벤트 선택</option>';
     _evtData = data.value;
-    _evtData.forEach(ev=>{ if(ev.fields.Status==='Active') drawSel.innerHTML+=`<option value="${ev.id}">${ev.fields.Title}</option>`; });
+    _evtData.forEach(ev=>{ if(ev.fields.Status==='Active') drawSel.innerHTML+=`<option value="${ev.id}">${_esc(ev.fields.Title)}</option>`; });
+    renderDrawScopeList();
     _evtPage = 1;
     renderAdminEventList();
   }catch(e){ console.error(e); }
@@ -1887,14 +1945,46 @@ function initDrawHourSelect(){
   }
 }
 
+/* 자동 추첨 대상 — 진행 중인 이벤트 전부 / 체크한 이벤트만.
+   설정은 시각과 함께 wmc_draw_schedule.json 한 파일에 담는다(목록·파일을 새로 만들지 않는다).
+   형식: {day, hour, min, scope:'all'|'selected', eventIds:[...], dayName, savedAt} */
+let _drawScopeSel = new Set();
+
+function onDrawScopeChange(){
+  const sel = (document.querySelector('input[name="draw-scope"]:checked')||{}).value;
+  document.getElementById('draw-scope-list').style.display = sel === 'selected' ? 'block' : 'none';
+}
+function renderDrawScopeList(){
+  const box = document.getElementById('draw-scope-items');
+  if(!box) return;
+  const active = (_evtData||[]).filter(ev=>ev.fields.Status==='Active');
+  if(!active.length){ box.innerHTML = '<div class="sc-empty">진행 중인 이벤트가 없습니다.</div>'; return; }
+  box.innerHTML = active.map(ev=>{
+    const dl = ev.fields.Deadline ? fmtDate(ev.fields.Deadline) : '';
+    return '<label class="sc-row"><input type="checkbox" value="' + ev.id + '"' +
+      (_drawScopeSel.has(String(ev.id)) ? ' checked' : '') + ' onchange="onDrawScopeItem(this)">' +
+      '<span>' + _esc(ev.fields.Title||'') + '</span>' +
+      (dl ? '<span class="dl">마감 ' + _esc(dl) + '</span>' : '') + '</label>';
+  }).join('');
+}
+function onDrawScopeItem(el){
+  if(el.checked) _drawScopeSel.add(String(el.value)); else _drawScopeSel.delete(String(el.value));
+}
+
 async function saveDrawSchedule(){
   initDrawHourSelect();
   const day  = parseInt(document.getElementById('draw-day-sel').value);
   const hour = parseInt(document.getElementById('draw-hour-sel').value);
   const min  = parseInt(document.getElementById('draw-min-sel').value||'0');
+  const scope = (document.querySelector('input[name="draw-scope"]:checked')||{}).value || 'all';
+  const eventIds = scope === 'selected' ? [..._drawScopeSel] : [];
+  if(scope === 'selected' && !eventIds.length){
+    showToast('자동 추첨할 이벤트를 하나 이상 선택해 주세요.', '⚠️', 3000);
+    return;
+  }
   const DAY_KR = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
   // localStorage 즉시 적용
-  localStorage.setItem(DRAW_SCHEDULE_KEY, JSON.stringify({day, hour, min}));
+  localStorage.setItem(DRAW_SCHEDULE_KEY, JSON.stringify({day, hour, min, scope, eventIds}));
   startDrawScheduler();
   // wmc_draw_schedule.json 에만 저장 (system_config_final.xlsx 수정 안 함 — 서식 보호)
   try{
@@ -1903,14 +1993,15 @@ async function saveDrawSchedule(){
     let docDrive = (drivesRes.value||[]).find(d=>['Documents','문서','Shared Documents'].includes(d.name));
     if(!docDrive && drivesRes.value && drivesRes.value.length) docDrive = drivesRes.value[0];
     if(!docDrive) throw new Error('Drive not found');
-    const payload = JSON.stringify({day, hour, min, dayName:DAY_KR[day], savedAt: new Date().toISOString()});
+    const payload = JSON.stringify({day, hour, min, scope, eventIds, dayName:DAY_KR[day], savedAt: new Date().toISOString()});
     const upRes = await fetch(
       'https://graph.microsoft.com/v1.0/drives/'+docDrive.id+'/root:/wmc_draw_schedule.json:/content',
       {method:'PUT', headers:{Authorization:'Bearer '+t2,'Content-Type':'application/json'}, body:payload}
     );
     if(!upRes.ok) throw new Error('json 저장 실패 ('+upRes.status+')');
     _sysConfig = null;
-    showToast(`저장 완료! ${DAY_KR[day]} ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}`, '✅', 2500);
+    showToast(`저장 완료! ${DAY_KR[day]} ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} · `
+      + (scope === 'selected' ? `선택한 ${eventIds.length}건` : '진행 중 전부'), '✅', 2800);
   }catch(e){
     console.warn('[WMC] schedule save failed:', e.message);
     showToast(`로컬에만 저장됨: ${e.message}`, '⚠️', 3000);
@@ -1934,8 +2025,13 @@ async function loadDrawSchedule(){
           document.getElementById('draw-day-sel').value  = js.day;
           document.getElementById('draw-hour-sel').value = js.hour;
           document.getElementById('draw-min-sel').value  = js.min||0;
-          localStorage.setItem(DRAW_SCHEDULE_KEY, JSON.stringify({day:js.day, hour:js.hour, min:js.min||0}));
-          return {day:js.day, hour:js.hour, min:js.min||0};
+          const scope = js.scope === 'selected' ? 'selected' : 'all';
+          _drawScopeSel = new Set((js.eventIds||[]).map(String));
+          const radio = document.querySelector(`input[name="draw-scope"][value="${scope}"]`);
+          if(radio){ radio.checked = true; onDrawScopeChange(); }
+          renderDrawScopeList();
+          localStorage.setItem(DRAW_SCHEDULE_KEY, JSON.stringify({day:js.day, hour:js.hour, min:js.min||0, scope, eventIds:[..._drawScopeSel]}));
+          return {day:js.day, hour:js.hour, min:js.min||0, scope, eventIds:[..._drawScopeSel]};
         }
       }
     }
@@ -2106,7 +2202,23 @@ function startDrawScheduler(){
       if(now.getUTCDay()===s.day && now.getUTCHours()===s.hour && now.getUTCMinutes()===sMin){
         try{
           const data = await apiAllRetry(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields`);
-          const active = data.value.filter(ev=>ev.fields.Status==='Active');
+          let active = data.value.filter(ev=>ev.fields.Status==='Active');
+          /* 대상 범위 — 「선택한 이벤트만」 이면 저장해 둔 목록에 있는 것만 돌린다. */
+          if(s.scope === 'selected'){
+            const want = new Set((s.eventIds||[]).map(String));
+            active = active.filter(ev=>want.has(String(ev.id)));
+          }
+          /* 마감 전 이벤트는 건너뛴다.
+             추첨이 도는 동안 들어온 신청은 조회 시점 이후라 당첨·낙첨 어느 쪽도 되지 못하고
+             Applied 상태로 남으며 쿠폰도 환급되지 않는다. 마감이 지난 뒤에만 돌려야 안전하다. */
+          const nowMs = Date.now();
+          const skipped = [];
+          active = active.filter(ev=>{
+            const dl = ev.fields.Deadline ? new Date(ev.fields.Deadline).getTime() : 0;
+            if(dl && dl > nowMs){ skipped.push(ev.fields.Title||ev.id); return false; }
+            return true;
+          });
+          if(skipped.length) console.warn('[WMC] 자동 추첨 건너뜀(마감 전):', skipped.join(', '));
           for(const ev of active) await runDrawForEvent(ev.id, {auto:true});
         }catch(e){ console.error('자동 추첨 실패:',e); }
       }
@@ -2323,9 +2435,24 @@ async function runDrawForEvent(evId, opts = {}){
 }
 
 async function runDraw(){
-  const evId = document.getElementById('draw-event-sel').value;
+  const sel = document.getElementById('draw-event-sel');
+  const evId = sel.value;
   if(!evId){ alert('이벤트를 선택해주세요.'); return; }
-  showConfirmModal('선택한 이벤트의 당첨자를 추첨하시겠습니까? 이미 지원한 인원 중 차량당 1명이 무작위 선정됩니다.', async()=>{
+  /* 마감 전 실행 경고 — 마감 직전에 누른 신청이 저장되는 중이면, 그 신청은 당첨·낙첨 어느 쪽도 되지 못하고
+     Applied 로 남으며 쿠폰도 돌아가지 않는다. 그래서 마감 1분 뒤 실행을 권한다. */
+  const evRow = (_evtData||[]).find(ev=>String(ev.id)===String(evId));
+  const dl = evRow && evRow.fields.Deadline ? new Date(evRow.fields.Deadline).getTime() : 0;
+  const left = dl ? dl - Date.now() : -1;
+  let warn = '';
+  if(left > 0){
+    const mins = Math.ceil(left/60000);
+    warn = '\n\n⚠️ 아직 마감 전입니다 (마감까지 약 ' + mins + '분).\n'
+         + '지금 실행하면 추첨 도중 들어온 신청이 처리되지 않은 채 남고 쿠폰도 환급되지 않습니다.\n'
+         + '마감 후 1분 이상 지난 뒤에 실행하시길 권합니다.';
+  } else if(left > -60000 && dl){
+    warn = '\n\n⚠️ 마감된 지 1분이 지나지 않았습니다. 잠시 뒤에 실행하시길 권합니다.';
+  }
+  showConfirmModal('선택한 이벤트의 당첨자를 추첨하시겠습니까?\n차량마다 신청자 중 1명이 무작위로 선정되고, 낙첨자 쿠폰은 자동 환급됩니다. 되돌릴 수 없습니다.' + warn, async()=>{
     loading(true,'추첨 진행 중...');
     try{
       const r = await runDrawForEvent(evId);
