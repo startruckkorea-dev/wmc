@@ -268,6 +268,9 @@ tbody tr:hover td{background:#fafbfd}
 .how-l{margin:10px 0 0;padding-left:18px;font-size:.8rem;line-height:1.75;color:var(--text2,#4b5563)}
 .how-l li{margin-bottom:2px}
 .how-l b{color:var(--text,#111827);font-weight:700}
+/* 단계 안의 보조 설명 — 줄을 바꿔 옅게 둔다(별도 단계처럼 보이지 않게) */
+.how-sub{display:block;margin-top:2px;font-size:.76rem;color:var(--gray3,#6b7280)}
+.how-sub b{color:var(--text2,#4b5563);font-weight:700}
 .how-n{margin:8px 0 0;font-size:.74rem;color:var(--gray3,#6b7280);line-height:1.6}
 .sync-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
 .sync-sum div{background:var(--gray1,#f4f5f7);border-radius:8px;padding:10px 12px}
@@ -407,13 +410,12 @@ tbody tr:hover td{background:#fafbfd}
         추첨 진행 과정
       </summary>
       <ol class="how-l">
-        <li><b>신청</b> — 원하는 차량을 골라 신청하면 <b>쿠폰이 먼저 차감</b>됩니다. 한 이벤트에 한 번만 신청할 수 있습니다.</li>
-        <li><b>취소</b> — 마감 전에는 취소할 수 있고, 그때 <b>쿠폰은 바로 돌려받습니다</b>.</li>
+        <li><b>신청</b> — 원하는 차량을 골라 신청하면 <b>쿠폰이 먼저 차감</b>됩니다. 한 이벤트에 한 번만 신청할 수 있습니다.
+          <span class="how-sub">마감 전에는 취소할 수 있고, 그때 <b>쿠폰은 바로 돌려받습니다</b>.</span></li>
         <li><b>마감</b> — 마감 시각이 지나면 신청·취소가 모두 닫힙니다.</li>
         <li><b>추첨</b> — 마감 <b>1분 뒤 정해진 시각에 자동으로</b> 진행됩니다.
           차량마다 <b>마감 시점의 신청자 명단을 그대로</b> 두고 그 안에서 <b>한 명</b>을 뽑습니다.
-          <b>모든 신청자의 당첨 확률은 같습니다</b> — 신청 순서·시각·쿠폰 수·부서는 반영되지 않고,
-          특정인을 미리 지정하거나 결과를 바꾸는 기능도 없습니다.</li>
+          <b>모든 신청자의 당첨 확률은 같습니다.</b></li>
         <li><b>결과</b> — 당첨되면 쿠폰은 그대로 쓰인 것이 되고, <b>낙첨되면 쿠폰이 자동으로 환급</b>됩니다. 결과는 「내 신청」에서 확인하세요.</li>
       </ol>
       <p class="how-n">차량이 여러 대인 이벤트는 차량마다 따로 추첨합니다. 같은 사람이 두 대에 당첨되지는 않습니다.
@@ -725,7 +727,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-19.9';
+const APP_VERSION = '2026-09-19.10';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
