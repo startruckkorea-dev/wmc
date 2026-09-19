@@ -48,6 +48,10 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
 .hdr-contact-mail{color:#3d4756;font-weight:500}
 .hdr-contact-mail a{color:#2b5c9e;text-decoration:none}
 .hdr-contact-mail a:hover{text-decoration:underline}
+/* 헤더 쿠폰 배지 — 아이콘과 숫자를 한 알약에 담는다 */
+.hdr-coupon{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.15);
+  padding:4px 11px;border-radius:20px;font-size:.78rem;line-height:1;white-space:nowrap}
+.hdr-coupon svg{width:14px;height:14px;opacity:.9}
 /* 계정 정보 — 이름은 진하게, 이메일은 옅게 두 줄로 */
 .hdr-user{display:flex;flex-direction:column;align-items:flex-end;line-height:1.35}
 .hdr-user-name{font-size:.8rem;font-weight:600;color:#323130}
@@ -370,7 +374,7 @@ tbody tr:hover td{background:#fafbfd}
     </div>
     <div class="header-right">
       <span id="user-name" class="hdr-user"></span>
-      <span id="coupon-header" style="background:rgba(255,255,255,.15);padding:4px 10px;border-radius:20px;font-size:.78rem">쿠폰 -개</span>
+      <span id="coupon-header" class="hdr-coupon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5V7a1 1 0 011-1h16a1 1 0 011 1v2.5a2.5 2.5 0 000 5V17a1 1 0 01-1 1H4a1 1 0 01-1-1v-2.5a2.5 2.5 0 000-5z"/><path d="M15 6v2"/><path d="M15 11v2"/><path d="M15 16v2"/></svg><span id="coupon-header-n">-개</span></span>
       <button class="btn-logout" onclick="logout()">로그아웃</button>
     </div>
   </div>
@@ -406,9 +410,10 @@ tbody tr:hover td{background:#fafbfd}
         <li><b>신청</b> — 원하는 차량을 골라 신청하면 <b>쿠폰이 먼저 차감</b>됩니다. 한 이벤트에 한 번만 신청할 수 있습니다.</li>
         <li><b>취소</b> — 마감 전에는 취소할 수 있고, 그때 <b>쿠폰은 바로 돌려받습니다</b>.</li>
         <li><b>마감</b> — 마감 시각이 지나면 신청·취소가 모두 닫힙니다.</li>
-        <li><b>추첨</b> — 마감 <b>1분 뒤 정해진 시각에 자동으로</b> 진행됩니다(필요하면 관리자가 직접 돌릴 수도 있습니다).
-          차량마다 그 차량 신청자 명단을 불러와 <b>암호학적 난수</b>(브라우저 <code>crypto</code>)로 <b>한 명</b>을 뽑습니다.
-          신청 순서·신청 시각·쿠폰 수·부서는 <b>전혀 반영되지 않고</b>, 특정인을 미리 지정하는 기능도 없습니다.</li>
+        <li><b>추첨</b> — 마감 <b>1분 뒤 정해진 시각에 자동으로</b> 진행됩니다.
+          차량마다 <b>마감 시점의 신청자 명단을 그대로</b> 두고 그 안에서 <b>한 명</b>을 뽑습니다.
+          <b>모든 신청자의 당첨 확률은 같습니다</b> — 신청 순서·시각·쿠폰 수·부서는 반영되지 않고,
+          특정인을 미리 지정하거나 결과를 바꾸는 기능도 없습니다.</li>
         <li><b>결과</b> — 당첨되면 쿠폰은 그대로 쓰인 것이 되고, <b>낙첨되면 쿠폰이 자동으로 환급</b>됩니다. 결과는 「내 신청」에서 확인하세요.</li>
       </ol>
       <p class="how-n">차량이 여러 대인 이벤트는 차량마다 따로 추첨합니다. 같은 사람이 두 대에 당첨되지는 않습니다.
@@ -1324,7 +1329,7 @@ async function loadMyCoupons(){
                   name: String(it.fields.EngName||'').trim(), coupon: Number(it.fields.Coupon||0) }))
       .filter(c=>c.email);
     const mine = couponData.find(c=>c.email.toLowerCase()===user.email.toLowerCase());
-    document.getElementById('coupon-header').textContent='쿠폰 '+(mine?mine.coupon:0)+'개';
+    { const _n=document.getElementById('coupon-header-n'); if(_n) _n.textContent=(mine?mine.coupon:0)+'개'; }
   }catch(e){ console.warn('쿠폰 로드 실패',e); }
 }
 
@@ -2838,7 +2843,7 @@ async function applyCoupon(email){
     if(valEl) valEl.textContent = newVal;
     // 헤더 쿠폰 수 갱신
     const mine = couponData.find(c=>c.email.toLowerCase()===user.email.toLowerCase());
-    if(mine) document.getElementById('coupon-header').textContent='쿠폰 '+mine.coupon+'개';
+    if(mine) { const _n=document.getElementById('coupon-header-n'); if(_n) _n.textContent=mine.coupon+'개'; }
     loading(false);
     showToast('쿠폰 저장 완료!', '✅');
   }catch(e){
