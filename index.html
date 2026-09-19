@@ -568,16 +568,16 @@ tbody tr:hover td{background:#fafbfd}
       </div>
       <div class="card-body">
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-          <input type="text" id="hist-search" placeholder="이벤트명 / 신청자 검색" oninput="renderHistoryTable()"
+          <input type="text" id="hist-search" placeholder="이벤트명 / 신청자 검색" oninput="histFilterChanged()"
             style="border:1px solid var(--gray2);border-radius:4px;padding:5px 10px;font-size:.82rem;flex:1;min-width:160px">
-          <select id="hist-filter-status" onchange="renderHistoryTable()"
+          <select id="hist-filter-status" onchange="histFilterChanged()"
             style="border:1px solid var(--gray2);border-radius:4px;padding:5px 10px;font-size:.82rem">
             <option value="all">전체 결과</option>
             <option value="Winner">당첨</option>
             <option value="NotSelected">낙첨</option>
             <option value="Applied">신청중</option>
           </select>
-          <select id="hist-filter-event" onchange="renderHistoryTable()"
+          <select id="hist-filter-event" onchange="histFilterChanged()"
             style="border:1px solid var(--gray2);border-radius:4px;padding:5px 10px;font-size:.82rem;max-width:200px">
             <option value="all">전체 이벤트</option>
           </select>
@@ -725,7 +725,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-19.8';
+const APP_VERSION = '2026-09-19.9';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
@@ -1683,7 +1683,15 @@ async function loadWinnerHistory(){
   finally{ loading(false); }
 }
 
-function renderHistoryTable(){
+/* 신청 기록은 이벤트가 쌓일수록 수백 줄이 된다. 10건씩 나눠 본다(09-19).
+   검색·필터를 바꾸면 1쪽으로 돌린다 — 안 그러면 결과가 줄었을 때 빈 쪽이 보인다. */
+const HIST_PAGE_SIZE = 10;
+let _histPage = 1;
+function histPageGo(n){ _histPage = n; renderHistoryTable(true); }
+function histFilterChanged(){ _histPage = 1; renderHistoryTable(); }
+
+function renderHistoryTable(keepPage){
+  if(!keepPage) _histPage = Math.max(1, _histPage);   // 쪽 이동은 histPageGo 로만, 그 밖에는 현재 쪽 유지
   const search    = (document.getElementById('hist-search')||{value:''}).value.toLowerCase();
   const statusF   = (document.getElementById('hist-filter-status')||{value:'all'}).value;
   const eventF    = (document.getElementById('hist-filter-event')||{value:'all'}).value;
@@ -1712,7 +1720,11 @@ function renderHistoryTable(){
     return;
   }
 
-  const html = `<div style="font-size:.78rem;color:var(--text2);margin-bottom:6px">${filtered.length}건</div>
+  const totalPages = Math.max(1, Math.ceil(filtered.length / HIST_PAGE_SIZE));
+  if(_histPage > totalPages) _histPage = totalPages;
+  const pageRows = filtered.slice((_histPage-1)*HIST_PAGE_SIZE, (_histPage-1)*HIST_PAGE_SIZE + HIST_PAGE_SIZE);
+
+  const html = `<div style="font-size:.78rem;color:var(--text2);margin-bottom:6px">${filtered.length}건${totalPages>1?` · ${_histPage} / ${totalPages} 쪽`:''}</div>
     <table style="width:100%;border-collapse:collapse;font-size:.82rem">
       <thead><tr style="background:var(--blue);color:#fff">
         <th style="padding:8px 10px;text-align:left">이벤트</th>
@@ -1723,7 +1735,7 @@ function renderHistoryTable(){
         <th style="padding:8px 10px;text-align:center">결과</th>
         <th style="padding:8px 10px;text-align:left">신청일</th>
       </tr></thead>
-      <tbody>${filtered.map(a=>{
+      <tbody>${pageRows.map(a=>{
         const f = a.fields;
         const ev = _histEvs.find(e=>Number(e.id)===Number(f.EventID));
         const veh = _histVehs.find(v=>Number(v.id)===Number(f.VehicleID));
@@ -1739,7 +1751,15 @@ function renderHistoryTable(){
           <td style="padding:8px 10px;color:var(--text2)">${fmtDate(f.AppliedDate)}</td>
         </tr>`;
       }).join('')}</tbody>
-    </table>`;
+    </table>`
+    + (totalPages > 1 ? `
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;font-size:.82rem">
+        <button class="btn btn-secondary btn-sm" onclick="histPageGo(1)" ${_histPage===1?'disabled':''}>«</button>
+        <button class="btn btn-secondary btn-sm" onclick="histPageGo(${_histPage-1})" ${_histPage===1?'disabled':''}>‹</button>
+        <span style="color:var(--text2)">${_histPage} / ${totalPages}</span>
+        <button class="btn btn-secondary btn-sm" onclick="histPageGo(${_histPage+1})" ${_histPage===totalPages?'disabled':''}>›</button>
+        <button class="btn btn-secondary btn-sm" onclick="histPageGo(${totalPages})" ${_histPage===totalPages?'disabled':''}>»</button>
+      </div>` : '');
   document.getElementById('winner-history-table').innerHTML = html;
 }
 
