@@ -934,8 +934,11 @@ async function apiAllRetry(path){
 }
 
 async function apiAll(path){
-  let items=[], url=GRAPH+path;
-  while(url){
+  /* 페이지 상한 — nextLink 가 끝나지 않는 상황(목록 급증·서버 이상)에서 화면이 멈추지 않게 한다.
+     한 페이지 기본 200건 기준 60페이지면 12,000건이라 이 시스템 규모에서는 닿지 않는다. */
+  let items=[], url=GRAPH+path, page=0;
+  while(url && page<60){
+    page++;
     const t=await token();
     const r=await fetch(url,{headers:{'Authorization':'Bearer '+t}});
     if(!r.ok){ const e=await r.text(); throw new Error(r.status+' '+e); }
@@ -943,6 +946,7 @@ async function apiAll(path){
     items=items.concat(d.value||[]);
     url=d['@odata.nextLink']||null;
   }
+  if(url) console.warn('[WMC] 60페이지 상한에 걸려 이후 항목은 읽지 않았습니다:', path.slice(0,80));
   return {value:items};
 }
 function loading(v, msg='처리 중입니다...'){
@@ -1237,8 +1241,8 @@ function _renderEventGridPage(){
       : '') : '';
     return `<div class="event-card ${cardClass}" onclick="showDetail(${ev.id})">
       <div class="event-card-header ${headerClass}">
-        <div class="event-card-title">${f.Title||''}</div>
-        <div class="event-card-week">${f.WeekNumber||''}</div>
+        <div class="event-card-title">${_esc(f.Title||'')}</div>
+        <div class="event-card-week">${_esc(f.WeekNumber||'')}</div>
       </div>
       <div class="event-card-body">
         <!-- 이모지(📅⏰) 대신 라벨을 둔다. 글꼴마다 크기·세로 정렬이 달라 줄이 들쭉날쭉했고,
@@ -1323,7 +1327,7 @@ async function showDetail(eventId){
     document.getElementById('detail-content').innerHTML = `
       <div class="detail-header">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div class="detail-title">${f.Title||''}</div>
+          <div class="detail-title">${_esc(f.Title||'')}</div>
           <span class="status-badge ${f.Status==='Active'?'active':f.Status==='Finished'?'finished':'draft'}">
             <!-- 원형 이모지(🟢⚫🟡)는 글꼴에 따라 크기·정렬이 튀고 색이 배지 색과 어긋난다.
                  ::before 로 그린 점을 쓰면 배지 글자색을 그대로 따라간다(.status-badge::before). -->
@@ -1423,6 +1427,7 @@ async function updateCouponBy(email, delta){
     if(r.ok){
       const c = couponData.find(x=>(x.email||'').toLowerCase()===String(email).toLowerCase());
       if(c) c.coupon = next;
+      wmcLog('쿠폰 증감', email, (Number(delta)>0?'+':'') + Number(delta) + ' → ' + next + '개');
       return next;
     }
     if(r.status === 412){ await new Promise(w=>setTimeout(w, 200 + i*200)); continue; }   // 그 사이 누가 바꿨다 — 다시 읽는다
@@ -1445,11 +1450,46 @@ async function setCouponTo(email, value){
     headers:{Authorization:'Bearer '+t,'Content-Type':'application/json','If-Match':etag},
     body: JSON.stringify({fields:{Coupon: next}})});
   if(!r.ok) throw new Error(r.status + ' 쿠폰 저장 실패' + (r.status===412 ? ' (그 사이 값이 바뀌었습니다. 새로고침 후 다시 시도해 주세요)' : ''));
+  wmcLog('쿠폰 값 지정', email, Number(cur.fields.Coupon||0) + '개 → ' + next + '개');
   const c = couponData.find(x=>(x.email||'').toLowerCase()===String(email).toLowerCase());
   if(c) c.coupon = next;
   return next;
 }
 
+
+/* ── 감사 기록 ────────────────────────────────────────────────────
+   추첨 · 쿠폰 증감 · 이벤트 상태 변경처럼 「나중에 왜 그랬는지」 를 물을 수 있는 동작을 남긴다.
+   쿠폰은 관리자가 임의로 올리고 내릴 수 있어 근거가 없으면 설명이 어렵다.
+   목록(WMC_Log)이 없으면 아무 일도 하지 않는다 — 기록을 남기려면 아래 열로 목록만 만들면 된다.
+     Title(기본) · Action · Actor · Target · Detail · LoggedAt
+   기록 실패가 업무를 막지 않도록 모든 오류는 삼키고 콘솔에만 남긴다. */
+const LIST_LOG = 'WMC_Log';
+let _logListOk = null;          // null=모름, false=없음(다시 시도 안 함), true=있음
+async function wmcLog(action, target, detail){
+  try{
+    if(_logListOk === false) return;
+    const actor = (user && (user.email||user.username)) || '-';
+    const now = new Date(Date.now()+9*3600*1000).toISOString().replace('T',' ').slice(0,19);
+    const body = {fields:{
+      Title: String(action).slice(0,60) + ' · ' + now,
+      Action: String(action).slice(0,120),
+      Actor: String(actor).slice(0,120),
+      Target: String(target==null?'':target).slice(0,200),
+      Detail: String(detail==null?'':detail).slice(0,900),
+      LoggedAt: new Date().toISOString()
+    }};
+    await api(`/sites/${siteId}/lists/${LIST_LOG}/items`,'POST',body);
+    _logListOk = true;
+  }catch(e){
+    const m = String(e && e.message || '');
+    if(/itemNotFound|does not exist|not found|404/i.test(m)){
+      _logListOk = false;
+      console.warn('[WMC] 기록 목록(' + LIST_LOG + ')이 없어 감사 기록을 건너뜁니다. 목록을 만들면 그때부터 남습니다.');
+    } else {
+      console.warn('[WMC] 감사 기록 실패(무시):', m.slice(0,120));
+    }
+  }
+}
 
 // ═══════════════════════════════════════════
 // APPLY / CANCEL
@@ -1803,7 +1843,7 @@ function renderHistoryTable(keepPage){
         const rowBg = f.Status==='Winner'?'#f0fff4':'';
         return `<tr style="border-bottom:1px solid var(--gray2);background:${rowBg}">
           <td style="padding:8px 10px;font-weight:600">${ev?ev.fields.Title:('#'+f.EventID)}</td>
-          <td style="padding:8px 10px">${f.ApplicantName||f.ApplicantEmail||'-'}</td>
+          <td style="padding:8px 10px">${_esc(f.ApplicantName||f.ApplicantEmail||'-')}</td>
           <td style="padding:8px 10px">${veh?veh.fields.Model||'-':'-'}</td>
           <td style="padding:8px 10px">${veh?veh.fields.PlateNo||'-':'-'}</td>
           <td style="padding:8px 10px;text-align:center">${totalApps}명</td>
@@ -1863,9 +1903,9 @@ async function editEvent(evId){
   const vInp = document.getElementById('vehicle-inputs');
   vInp.innerHTML = evVehs.map(v=>`
     <div class="vehicle-row" data-veh-id="${v.id}">
-      <input type="text" placeholder="모델" style="flex:2" value="${v.fields.Model||''}">
-      <input type="text" placeholder="색상" style="flex:2" value="${v.fields.Color||''}">
-      <input type="text" placeholder="번호판" style="flex:1.5" value="${v.fields.PlateNo||''}">
+      <input type="text" placeholder="모델" style="flex:2" value="${_esc(v.fields.Model||'')}">
+      <input type="text" placeholder="색상" style="flex:2" value="${_esc(v.fields.Color||'')}">
+      <input type="text" placeholder="번호판" style="flex:1.5" value="${_esc(v.fields.PlateNo||'')}">
       <button class="btn btn-danger btn-sm" onclick="removeVehicleRow(this)">✕</button>
     </div>`).join('') || `<div class="vehicle-row"><input type="text" placeholder="모델" style="flex:2"><input type="text" placeholder="색상" style="flex:2"><input type="text" placeholder="번호판" style="flex:1.5"><button class="btn btn-danger btn-sm" onclick="removeVehicleRow(this)">✕</button></div>`;
 
@@ -2022,7 +2062,7 @@ function renderAdminEventList(){
     const f = ev.fields;
     return `<div class="admin-event-item${pinned?' pinned':''}">
       <div class="admin-event-info">
-        <div class="admin-event-title">${f.Title}</div>
+        <div class="admin-event-title">${_esc(f.Title||'')}</div>
         <div class="admin-event-meta">${fmtDT(f.AvailableStart)} ~ ${fmtDT(f.AvailableEnd)} | 마감: ${fmtDT(f.Deadline)} | 쿠폰 ${f.CouponCost||1}개${f.AutoActivateAt&&f.Status==='Draft'?` | ⏰ 자동활성화: ${fmtDT(f.AutoActivateAt)}`:''}</div>
       </div>
       <div class="admin-event-actions">
@@ -2084,11 +2124,13 @@ function evtPageGo(p){
 }
 
 async function changeEventStatus(evId, status){
+  const _evTitle = (() => { const e = (typeof _evtData!=='undefined' ? _evtData : []).find(x=>Number(x.id)===Number(evId)); return e ? (e.fields.Title||'') : ''; })();
   const msg = status==='Active'?'활성화':status==='Finished'?'종료':'비활성화';
   showConfirmModal(`이벤트를 ${msg}하시겠습니까?`, async()=>{
     loading(true);
     try{
       await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}`,'PATCH',{fields:{Status:status}});
+      wmcLog('이벤트 상태 변경', '이벤트 ' + evId + (_evTitle ? ' · ' + _evTitle : ''), '→ ' + status);
       await loadAdminEvents();
       await loadEvents();
     }catch(e){ alert('상태 변경 실패: '+e.message); }
@@ -2169,7 +2211,7 @@ function renderDrawStatus(){
     + ' · 대상 ' + scopeTxt + ' · 이 화면이 열려 있는 동안에만 동작합니다</span>'
     + (dirty ? '<span class="dstat-dirty">변경한 내용이 아직 저장되지 않았습니다 — [저장]을 눌러 주세요.</span>' : '');
   // 남은 시간이 흐르므로 1분마다 다시 그린다.
-  if(!_drawStatusTimer) _drawStatusTimer = setInterval(()=>{ try{ renderDrawStatus(); }catch(e){} }, 60000);
+  if(!_drawStatusTimer) _drawStatusTimer = setInterval(()=>{ try{ renderDrawStatus(); }catch(e){ console.warn('[WMC] 추첨 상태 표시 갱신 실패:', e && e.message); } }, 60000);
 }
 
 function initDrawHourSelect(){
@@ -2190,7 +2232,7 @@ function initDrawHourSelect(){
 let _drawScopeSel = new Set();
 
 function onDrawScopeChange(){
-  setTimeout(()=>{ try{ renderDrawStatus(); }catch(e){} }, 0);
+  setTimeout(()=>{ try{ renderDrawStatus(); }catch(e){ console.warn('[WMC] 추첨 상태 표시 실패:', e && e.message); } }, 0);
   const sel = (document.querySelector('input[name="draw-scope"]:checked')||{}).value;
   document.getElementById('draw-scope-list').style.display = sel === 'selected' ? 'block' : 'none';
 }
@@ -2208,7 +2250,7 @@ function renderDrawScopeList(){
   }).join('');
 }
 function onDrawScopeItem(el){
-  setTimeout(()=>{ try{ renderDrawStatus(); }catch(e){} }, 0);
+  setTimeout(()=>{ try{ renderDrawStatus(); }catch(e){ console.warn('[WMC] 추첨 상태 표시 실패:', e && e.message); } }, 0);
   if(el.checked) _drawScopeSel.add(String(el.value)); else _drawScopeSel.delete(String(el.value));
 }
 
@@ -2715,6 +2757,8 @@ async function runDrawForEvent(evId, opts = {}){
       winnerCount++;
     }
     // ⑦ 이벤트 종료
+    wmcLog('추첨 실행', '이벤트 ' + evId + ' · ' + (ev.fields.Title||''),
+      (opts.auto?'자동':'수동') + ' · 당첨 ' + winnerCount + '건');
     await apiRetry(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}`,'PATCH',{fields:{Status:'Finished'}});
     console.log('[WMC] 추첨 완료 — 이벤트', evId, '당첨', winnerCount, '건');
     return {winnerCount};
@@ -2787,6 +2831,7 @@ async function removeCouponRow(email){
   loading(true,'삭제 중...');
   try{
     await apiRetry(`/sites/${siteId}/lists/${LIST_COUPONS}/items/${c.id}`,'DELETE');
+    wmcLog('쿠폰 행 삭제', email, '잔여 ' + (c.coupon==null?'-':c.coupon) + '개');
     couponData = couponData.filter(x=>x!==c);
     filterCoupon();
     const n = document.getElementById('coupon-fold-n');
@@ -2898,6 +2943,7 @@ async function syncAddSelected(){
       done++;
     }catch(err){ failed.push(e.email + ' (' + err.message + ')'); }
   }
+  if(done) wmcLog('쿠폰 행 추가', done + '명', '시작 쿠폰 ' + start + '개' + (failed.length ? ' · 실패 ' + failed.length + '건' : ''));
   await loadCouponData();
   body.innerHTML = '<div class="sync-sum"><div><div class="k">추가 완료</div><div class="v hl">' + done + '명</div></div>'
     + '<div><div class="k">시작 쿠폰</div><div class="v">' + start + '개</div></div>'
