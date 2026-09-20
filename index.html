@@ -301,6 +301,31 @@ tbody tr:hover td{background:#fafbfd}
 .sync-ex summary{font-size:.78rem;color:var(--gray3);cursor:pointer}
 .sync-ex .sync-list{margin-top:6px;max-height:150px}
 .sync-prog{font-size:.82rem;color:var(--text2);padding:6px 0}
+/* 추첨 모드 탭 — 자동·수동을 한 화면에 쌓아 두니 지금 무엇을 보고 있는지
+   알기 어려웠다(09-20 사용자 요청). 한 번에 하나만 보이게 나눈다. */
+.dmode{display:flex;gap:6px;margin-bottom:14px}
+.dmode-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+  border:1px solid var(--gray2);background:#fff;color:var(--text2);
+  border-radius:8px;padding:10px 12px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.dmode-btn:hover{background:#f8fafc}
+.dmode-btn.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.dmode-btn .dg-ic{width:15px;height:15px;margin:0}
+/* 지금 자동 추첨이 어떻게 설정돼 있고 다음이 언제인지 */
+.dstat{border:1px solid #bfdbfe;background:#eff6ff;border-radius:8px;padding:11px 13px;margin-bottom:14px;font-size:.82rem;line-height:1.7;color:var(--text1)}
+.dstat b{color:var(--blue)}
+.dstat .dstat-sub{display:block;color:var(--text2);font-size:.76rem;margin-top:3px}
+.dstat.warn{border-color:#fcd34d;background:#fffbeb}
+.dstat.warn b{color:#b45309}
+.dstat-dirty{display:block;margin-top:5px;color:#b45309;font-size:.76rem;font-weight:600}
+/* 안내는 접어 둔다 — 필요할 때만 편다 */
+.dg-det{border:1px solid var(--gray2);border-radius:8px;background:#f8fafc;margin-bottom:14px}
+.dg-det>summary{list-style:none;cursor:pointer;padding:10px 13px;font-size:.82rem;font-weight:700;color:var(--blue);display:flex;align-items:center;gap:6px}
+.dg-det>summary::-webkit-details-marker{display:none}
+.dg-det>summary::after{content:'펼치기';margin-left:auto;font-size:.72rem;font-weight:600;color:var(--gray3)}
+.dg-det[open]>summary::after{content:'접기'}
+.dg-det .dg{border:none;background:transparent;margin:0;padding:0 13px 12px}
+.dg-det .dg .dg-t{display:none}
+
 /* 추첨 실행 안내 */
 .dg{border:1px solid var(--gray2,#e5e7eb);border-radius:8px;padding:12px 14px;margin-bottom:14px;background:#fff}
 .dg-ic{width:15px;height:15px;flex-shrink:0;display:inline-block}
@@ -599,81 +624,104 @@ tbody tr:hover td{background:#fafbfd}
         <span class="card-title">추첨 실행</span>
       </div>
       <div class="card-body">
-        <p style="font-size:.85rem;color:var(--text2);margin-bottom:12px">추첨은 <b>차량마다 신청자 중 한 명을 무작위로</b> 뽑고, 낙첨자에게는 쿠폰을 자동으로 돌려줍니다. 되돌릴 수 없으니 아래 안내를 먼저 읽어 주세요.</p>
+        <p style="font-size:.85rem;color:var(--text2);margin-bottom:12px">추첨은 <b>차량마다 신청자 중 한 명을 무작위로</b> 뽑고, 낙첨자에게는 쿠폰을 자동으로 돌려줍니다. <b>되돌릴 수 없습니다.</b></p>
 
-        <!-- 자동 추첨 안내 -->
-        <div class="dg">
-          <div class="dg-t"><svg class="dg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>자동 추첨은 이렇게 돕니다</div>
-          <ol>
-            <li><b>아래에서 정한 요일·시각</b>에 시작합니다. <b class="em-red">마감이 언제였든 자동 추첨 시각까지 기다렸다가 돕니다.</b>
-              <span class="dg-sub">예: 마감 목요일 16:00 · 추첨 금요일 16:10 → <b>금요일 16:10</b>에 실행</span></li>
-            <li>대상은 그 시각에 <b>진행 중(Active)인 이벤트 전부</b>입니다. 특정 이벤트만 돌리려면 아래에서 <b>「선택한 이벤트만」</b>으로 바꾸고 고르세요.</li>
-            <li><b>마감 시각과 추첨 시각이 같으면 1분 뒤에 돕니다.</b> 마감 16:00 · 추첨 16:00 이면 <b>16:01</b>에 실행됩니다.
-              <span class="dg-sub">마감 직전에 누른 신청이 아직 저장되는 중일 수 있어서입니다. 그 사이에 추첨이 돌면 <b>그 신청은 당첨도 낙첨도 아닌 채 남고 쿠폰도 돌아가지 않습니다.</b></span></li>
-            <li>마감이 <b>2시간 넘게 남은</b> 이벤트는 이번에는 건너뛰고, <b>다음 예정 시각</b>에 다시 판단합니다.</li>
-            <li>자동 추첨은 <b>관리자 화면이 열려 있는 동안</b>에만 동작합니다. 그 시각에 아무도 열어 두지 않았다면 나중에 <b>수동으로</b> 돌려 주세요 — 놓친 시각을 저절로 따라잡지는 않습니다.</li>
-          </ol>
+        <!-- 자동 · 수동 전환 -->
+        <div class="dmode">
+          <button type="button" class="dmode-btn on" id="dmode-btn-auto" onclick="switchDrawMode('auto')">
+            <svg class="dg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            자동 추첨 설정
+          </button>
+          <button type="button" class="dmode-btn" id="dmode-btn-manual" onclick="switchDrawMode('manual')">
+            <svg class="dg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V6a1.5 1.5 0 013 0v5"/><path d="M12 11V4.5a1.5 1.5 0 013 0V11"/><path d="M15 11V7a1.5 1.5 0 013 0v7a6 6 0 01-6 6h-1a6 6 0 01-6-6v-2a1.5 1.5 0 013 0"/></svg>
+            지금 수동으로 돌리기
+          </button>
         </div>
 
-        <!-- 자동 추첨 시간 설정 -->
-        <div style="background:#f8fafc;border:1px solid var(--gray2);border-radius:8px;padding:12px;margin-bottom:14px">
-          <div style="font-size:.82rem;font-weight:700;color:var(--blue);margin-bottom:8px">자동 추첨 시간 설정</div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <select id="draw-day-sel" style="border:1px solid var(--gray2);border-radius:4px;padding:6px 8px;font-size:.82rem">
-              <option value="0">일요일</option>
-              <option value="1">월요일</option>
-              <option value="2">화요일</option>
-              <option value="3">수요일</option>
-              <option value="4" selected>목요일</option>
-              <option value="5">금요일</option>
-              <option value="6">토요일</option>
-            </select>
-            <select id="draw-hour-sel" style="border:1px solid var(--gray2);border-radius:4px;padding:6px 8px;font-size:.82rem">
-            </select>
-            <span style="font-size:.82rem;color:var(--text2);font-weight:600">:</span>
-            <select id="draw-min-sel" style="border:1px solid var(--gray2);border-radius:4px;padding:6px 8px;font-size:.82rem">
-              <option value="0">00</option>
-              <option value="10">10</option>
-              <option value="20">20</option>
-              <option value="30">30</option>
-              <option value="40">40</option>
-              <option value="50">50</option>
-            </select>
-            <button class="btn btn-secondary btn-sm" onclick="saveDrawSchedule()" style="white-space:nowrap"><svg class="dg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>저장</button>
+        <!-- ───────── 자동 추첨 ───────── -->
+        <div id="dpane-auto">
+          <!-- 지금 어떻게 설정돼 있고 다음이 언제인지 한 줄로 -->
+          <div class="dstat" id="draw-status">설정을 불러오는 중…</div>
+
+          <!-- 자동 추첨 시간 설정 -->
+          <div style="background:#f8fafc;border:1px solid var(--gray2);border-radius:8px;padding:12px;margin-bottom:14px">
+            <div style="font-size:.82rem;font-weight:700;color:var(--blue);margin-bottom:8px">실행 시각</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <select id="draw-day-sel" onchange="renderDrawStatus()" style="border:1px solid var(--gray2);border-radius:4px;padding:6px 8px;font-size:.82rem">
+                <option value="0">일요일</option>
+                <option value="1">월요일</option>
+                <option value="2">화요일</option>
+                <option value="3">수요일</option>
+                <option value="4" selected>목요일</option>
+                <option value="5">금요일</option>
+                <option value="6">토요일</option>
+              </select>
+              <select id="draw-hour-sel" onchange="renderDrawStatus()" style="border:1px solid var(--gray2);border-radius:4px;padding:6px 8px;font-size:.82rem">
+              </select>
+              <span style="font-size:.82rem;color:var(--text2);font-weight:600">:</span>
+              <select id="draw-min-sel" onchange="renderDrawStatus()" style="border:1px solid var(--gray2);border-radius:4px;padding:6px 8px;font-size:.82rem">
+                <option value="0">00</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="40">40</option>
+                <option value="50">50</option>
+              </select>
+              <button class="btn btn-secondary btn-sm" onclick="saveDrawSchedule()" style="white-space:nowrap"><svg class="dg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>저장</button>
+            </div>
+
+            <div class="sc-scope">
+              <span style="font-weight:600;color:var(--text1)">대상</span>
+              <label><input type="radio" name="draw-scope" value="all" checked onchange="onDrawScopeChange()"> 진행 중인 이벤트 전부</label>
+              <label><input type="radio" name="draw-scope" value="selected" onchange="onDrawScopeChange()"> 선택한 이벤트만</label>
+            </div>
+            <div id="draw-scope-list" style="display:none">
+              <div class="sc-list" id="draw-scope-items"><div class="sc-empty">이벤트를 불러오는 중…</div></div>
+              <div class="dg-note">체크한 이벤트만 자동 추첨합니다. 새 이벤트를 만들면 여기서 다시 체크해 주세요.</div>
+            </div>
           </div>
 
-          <div class="sc-scope">
-            <span style="font-weight:600;color:var(--text1)">대상</span>
-            <label><input type="radio" name="draw-scope" value="all" checked onchange="onDrawScopeChange()"> 진행 중인 이벤트 전부</label>
-            <label><input type="radio" name="draw-scope" value="selected" onchange="onDrawScopeChange()"> 선택한 이벤트만</label>
-          </div>
-          <div id="draw-scope-list" style="display:none">
-            <div class="sc-list" id="draw-scope-items"><div class="sc-empty">이벤트를 불러오는 중…</div></div>
-            <div class="dg-note">체크한 이벤트만 자동 추첨합니다. 새 이벤트를 만들면 여기서 다시 체크해 주세요.</div>
-          </div>
+          <details class="dg-det">
+            <summary><svg class="dg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>자동 추첨은 이렇게 돕니다</summary>
+            <div class="dg">
+              <ol>
+                <li><b>위에서 정한 요일·시각</b>에 시작합니다. <b class="em-red">마감이 언제였든 자동 추첨 시각까지 기다렸다가 돕니다.</b>
+                  <span class="dg-sub">예: 마감 목요일 16:00 · 추첨 금요일 16:10 → <b>금요일 16:10</b>에 실행</span></li>
+                <li>대상은 그 시각에 <b>진행 중(Active)인 이벤트 전부</b>입니다. 특정 이벤트만 돌리려면 위에서 <b>「선택한 이벤트만」</b>으로 바꾸고 고르세요.</li>
+                <li><b>마감 시각과 추첨 시각이 같으면 1분 뒤에 돕니다.</b> 마감 16:00 · 추첨 16:00 이면 <b>16:01</b>에 실행됩니다.
+                  <span class="dg-sub">마감 직전에 누른 신청이 아직 저장되는 중일 수 있어서입니다. 그 사이에 추첨이 돌면 <b>그 신청은 당첨도 낙첨도 아닌 채 남고 쿠폰도 돌아가지 않습니다.</b></span></li>
+                <li>마감이 <b>2시간 넘게 남은</b> 이벤트는 이번에는 건너뛰고, <b>다음 예정 시각</b>에 다시 판단합니다.</li>
+                <li>자동 추첨은 <b>관리자 화면이 열려 있는 동안</b>에만 동작합니다. 그 시각에 아무도 열어 두지 않았다면 나중에 <b>수동으로</b> 돌려 주세요 — 놓친 시각을 저절로 따라잡지는 않습니다.</li>
+              </ol>
+            </div>
+          </details>
         </div>
 
-        <!-- 수동 추첨 안내 -->
-        <div class="dg">
-          <div class="dg-t"><svg class="dg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V6a1.5 1.5 0 013 0v5"/><path d="M12 11V4.5a1.5 1.5 0 013 0V11"/><path d="M15 11V7a1.5 1.5 0 013 0v7a6 6 0 01-6 6h-1a6 6 0 01-6-6v-2a1.5 1.5 0 013 0"/></svg>수동 추첨 순서</div>
-          <ol>
-            <li>이 화면을 <b>Ctrl + F5</b>로 새로 고칩니다. 오래 열어 둔 화면은 추첨이 거부됩니다.</li>
-            <li>아래에서 <b>추첨할 이벤트</b>를 고릅니다. 진행 중인 이벤트만 나옵니다.</li>
-            <li><b>[추첨 실행]</b>을 누르고 확인합니다. 차량마다 당첨자 한 명이 정해지고, 낙첨자 쿠폰이 환급됩니다.</li>
-            <li><b>완료 알림이 뜰 때까지 창을 닫지 마세요.</b> 신청자가 많으면 몇 분 걸릴 수 있습니다.</li>
-            <li>끝나면 이벤트가 <b>종료</b>로 바뀌고, 신청자 화면에 당첨·낙첨이 표시됩니다. <b>되돌릴 수 없습니다.</b></li>
-          </ol>
-          <div class="tip">
-            <span class="tip-ic">!</span>
-            <span><b>마감 시각이 지난 뒤, 1분 이상 여유를 두고</b> 실행해 주세요. 마감 직전에 누른 신청이 서버에 저장되는 중일 수 있는데, 그 사이에 추첨이 돌면 그 신청은 <b>당첨도 낙첨도 아닌 상태로 남고 쿠폰도 돌아가지 않습니다.</b></span>
+        <!-- ───────── 수동 추첨 ───────── -->
+        <div id="dpane-manual" style="display:none">
+          <div class="dstat warn">
+            <b>지금 바로 돌립니다.</b> 아래에서 고른 이벤트 하나만 추첨합니다.
+            <span class="dstat-sub">마감 시각이 지난 뒤 <b>1분 이상</b> 여유를 두고 실행해 주세요. 마감 직전에 누른 신청이 저장되는 중이면 그 신청은 당첨도 낙첨도 아닌 채 남고 쿠폰도 돌아가지 않습니다.</span>
           </div>
-        </div>
 
-        <!-- 수동 추첨 -->
-        <select id="draw-event-sel" style="border:1px solid var(--gray2);border-radius:4px;padding:7px 10px;font-size:.85rem;margin-bottom:12px;width:100%">
-          <option value="">추첨할 이벤트 선택</option>
-        </select>
-        <button class="btn btn-warning" onclick="runDraw()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>추첨 실행</button>
+          <select id="draw-event-sel" style="border:1px solid var(--gray2);border-radius:4px;padding:7px 10px;font-size:.85rem;margin-bottom:12px;width:100%">
+            <option value="">추첨할 이벤트 선택</option>
+          </select>
+          <button class="btn btn-warning" onclick="runDraw()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>추첨 실행</button>
+
+          <details class="dg-det" style="margin-top:14px">
+            <summary><svg class="dg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V6a1.5 1.5 0 013 0v5"/><path d="M12 11V4.5a1.5 1.5 0 013 0V11"/><path d="M15 11V7a1.5 1.5 0 013 0v7a6 6 0 01-6 6h-1a6 6 0 01-6-6v-2a1.5 1.5 0 013 0"/></svg>수동 추첨 순서</summary>
+            <div class="dg">
+              <ol>
+                <li>이 화면을 <b>Ctrl + F5</b>로 새로 고칩니다. 오래 열어 둔 화면은 추첨이 거부됩니다.</li>
+                <li>위에서 <b>추첨할 이벤트</b>를 고릅니다. 진행 중인 이벤트만 나옵니다.</li>
+                <li><b>[추첨 실행]</b>을 누르고 확인합니다. 차량마다 당첨자 한 명이 정해지고, 낙첨자 쿠폰이 환급됩니다.</li>
+                <li><b>완료 알림이 뜰 때까지 창을 닫지 마세요.</b> 신청자가 많으면 몇 분 걸릴 수 있습니다.</li>
+                <li>끝나면 이벤트가 <b>종료</b>로 바뀌고, 신청자 화면에 당첨·낙첨이 표시됩니다. <b>되돌릴 수 없습니다.</b></li>
+              </ol>
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   </div>
@@ -737,7 +785,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-09-19.13';
+const APP_VERSION = '2026-09-20.1';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
@@ -2054,6 +2102,76 @@ async function changeEventStatus(evId, status){
 const DRAW_SCHEDULE_KEY = 'wmc_draw_schedule';
 let _drawTimer = null;
 
+/* 자동·수동 전환. 한 번에 한쪽만 보여 주고, 어느 쪽을 보고 있는지 탭으로 표시한다. */
+function switchDrawMode(mode){
+  const auto = mode !== 'manual';
+  const pa = document.getElementById('dpane-auto'), pm = document.getElementById('dpane-manual');
+  if(pa) pa.style.display = auto ? '' : 'none';
+  if(pm) pm.style.display = auto ? 'none' : '';
+  const ba = document.getElementById('dmode-btn-auto'), bm = document.getElementById('dmode-btn-manual');
+  if(ba) ba.classList.toggle('on', auto);
+  if(bm) bm.classList.toggle('on', !auto);
+  if(auto) renderDrawStatus();
+}
+
+/* 요일 이름. saveDrawSchedule 안의 같은 배열은 그 함수 안에서만 쓰인다. */
+const DRAW_DAY_KR = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+/* 저장된 자동 추첨 설정. 화면의 선택 상자와 비교해 「저장 안 함」 을 알려 주는 데 쓴다. */
+let _drawSchedSaved = null;
+let _drawStatusTimer = null;
+
+/* 다음 실행 시각(KST). 반환값은 KST 시계를 담은 Date 로, getUTC* 로 읽는다. */
+function nextDrawAt(sc){
+  if(!sc || sc.day == null || sc.hour == null) return null;
+  const now = new Date(Date.now() + 9*3600*1000);
+  const diff = (Number(sc.day) - now.getUTCDay() + 7) % 7;
+  let at = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diff,
+    Number(sc.hour), Number(sc.min||0), 0));
+  if(at.getTime() <= now.getTime()) at = new Date(at.getTime() + 7*24*3600*1000);
+  return at;
+}
+/* 남은 시간을 사람이 읽는 말로. 「3일 2시간 뒤」 처럼. */
+function _untilText(at){
+  const ms = at.getTime() - (Date.now() + 9*3600*1000);
+  if(ms <= 0) return '곧';
+  const m = Math.floor(ms/60000), h = Math.floor(m/60), d = Math.floor(h/24);
+  if(d >= 1) return d + '일 ' + (h%24) + '시간 뒤';
+  if(h >= 1) return h + '시간 ' + (m%60) + '분 뒤';
+  return Math.max(1, m) + '분 뒤';
+}
+/* 지금 설정이 무엇이고 다음이 언제인지 한 줄로 보여 준다. */
+function renderDrawStatus(){
+  const el = document.getElementById('draw-status');
+  if(!el) return;
+  const p2 = n => String(n).padStart(2,'0');
+  const cur = {
+    day:  parseInt((document.getElementById('draw-day-sel')||{}).value),
+    hour: parseInt((document.getElementById('draw-hour-sel')||{}).value),
+    min:  parseInt((document.getElementById('draw-min-sel')||{}).value || '0'),
+    scope: ((document.querySelector('input[name="draw-scope"]:checked')||{}).value) || 'all',
+  };
+  if(isNaN(cur.day) || isNaN(cur.hour)){ el.textContent = '설정을 불러오는 중…'; return; }
+  const at = nextDrawAt(cur);
+  const scopeTxt = cur.scope === 'selected'
+    ? '선택한 이벤트 ' + _drawScopeSel.size + '건'
+    : '진행 중인 이벤트 전부';
+  const when = at
+    ? (at.getUTCMonth()+1) + '/' + at.getUTCDate() + '(' + DRAW_DAY_KR[at.getUTCDay()].slice(0,1) + ') '
+      + p2(at.getUTCHours()) + ':' + p2(at.getUTCMinutes()) + ' · ' + _untilText(at)
+    : '-';
+  // 저장값과 다르면 아직 적용되지 않았다는 뜻이다.
+  const sv = _drawSchedSaved;
+  const dirty = !sv || sv.day !== cur.day || sv.hour !== cur.hour || (sv.min||0) !== cur.min || (sv.scope||'all') !== cur.scope;
+  el.className = 'dstat' + (dirty ? ' warn' : '');
+  el.innerHTML =
+    '다음 자동 추첨 <b>' + when + '</b>'
+    + '<span class="dstat-sub">' + DRAW_DAY_KR[cur.day] + ' ' + p2(cur.hour) + ':' + p2(cur.min)
+    + ' · 대상 ' + scopeTxt + ' · 이 화면이 열려 있는 동안에만 동작합니다</span>'
+    + (dirty ? '<span class="dstat-dirty">변경한 내용이 아직 저장되지 않았습니다 — [저장]을 눌러 주세요.</span>' : '');
+  // 남은 시간이 흐르므로 1분마다 다시 그린다.
+  if(!_drawStatusTimer) _drawStatusTimer = setInterval(()=>{ try{ renderDrawStatus(); }catch(e){} }, 60000);
+}
+
 function initDrawHourSelect(){
   const sel = document.getElementById('draw-hour-sel');
   if(!sel || sel.options.length > 0) return;
@@ -2072,6 +2190,7 @@ function initDrawHourSelect(){
 let _drawScopeSel = new Set();
 
 function onDrawScopeChange(){
+  setTimeout(()=>{ try{ renderDrawStatus(); }catch(e){} }, 0);
   const sel = (document.querySelector('input[name="draw-scope"]:checked')||{}).value;
   document.getElementById('draw-scope-list').style.display = sel === 'selected' ? 'block' : 'none';
 }
@@ -2089,6 +2208,7 @@ function renderDrawScopeList(){
   }).join('');
 }
 function onDrawScopeItem(el){
+  setTimeout(()=>{ try{ renderDrawStatus(); }catch(e){} }, 0);
   if(el.checked) _drawScopeSel.add(String(el.value)); else _drawScopeSel.delete(String(el.value));
 }
 
@@ -2121,6 +2241,8 @@ async function saveDrawSchedule(){
     );
     if(!upRes.ok) throw new Error('json 저장 실패 ('+upRes.status+')');
     _sysConfig = null;
+    _drawSchedSaved = {day, hour, min, scope, eventIds};
+    renderDrawStatus();
     showToast(`저장 완료! ${DAY_KR[day]} ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} · `
       + (scope === 'selected' ? `선택한 ${eventIds.length}건` : '진행 중 전부'), '✅', 2800);
   }catch(e){
@@ -2152,6 +2274,8 @@ async function loadDrawSchedule(){
           if(radio){ radio.checked = true; onDrawScopeChange(); }
           renderDrawScopeList();
           localStorage.setItem(DRAW_SCHEDULE_KEY, JSON.stringify({day:js.day, hour:js.hour, min:js.min||0, scope, eventIds:[..._drawScopeSel]}));
+          _drawSchedSaved = {day:js.day, hour:js.hour, min:js.min||0, scope, eventIds:[..._drawScopeSel]};
+          renderDrawStatus();
           return {day:js.day, hour:js.hour, min:js.min||0, scope, eventIds:[..._drawScopeSel]};
         }
       }
@@ -2172,6 +2296,8 @@ async function loadDrawSchedule(){
       document.getElementById('draw-min-sel').value  = min;
       // localStorage도 동기화
       localStorage.setItem(DRAW_SCHEDULE_KEY, JSON.stringify({day, hour, min}));
+      _drawSchedSaved = {day, hour, min, scope:'all', eventIds:[]};
+      renderDrawStatus();
       return {day, hour, min};
     }
   }catch(e){ console.warn('[WMC] loadDrawSchedule from config:', e.message); }
@@ -2182,6 +2308,8 @@ async function loadDrawSchedule(){
     document.getElementById('draw-day-sel').value  = s.day;
     document.getElementById('draw-hour-sel').value = s.hour;
     if(s.min!=null) document.getElementById('draw-min-sel').value = s.min;
+    _drawSchedSaved = {day:s.day, hour:s.hour, min:s.min||0, scope:s.scope||'all', eventIds:s.eventIds||[]};
+    renderDrawStatus();
     return s;
   }catch(e){ return null; }
 }
