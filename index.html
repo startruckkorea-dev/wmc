@@ -1427,7 +1427,6 @@ async function updateCouponBy(email, delta){
     if(r.ok){
       const c = couponData.find(x=>(x.email||'').toLowerCase()===String(email).toLowerCase());
       if(c) c.coupon = next;
-      wmcLog('쿠폰 증감', email, (Number(delta)>0?'+':'') + Number(delta) + ' → ' + next + '개');
       return next;
     }
     if(r.status === 412){ await new Promise(w=>setTimeout(w, 200 + i*200)); continue; }   // 그 사이 누가 바꿨다 — 다시 읽는다
@@ -1450,46 +1449,11 @@ async function setCouponTo(email, value){
     headers:{Authorization:'Bearer '+t,'Content-Type':'application/json','If-Match':etag},
     body: JSON.stringify({fields:{Coupon: next}})});
   if(!r.ok) throw new Error(r.status + ' 쿠폰 저장 실패' + (r.status===412 ? ' (그 사이 값이 바뀌었습니다. 새로고침 후 다시 시도해 주세요)' : ''));
-  wmcLog('쿠폰 값 지정', email, Number(cur.fields.Coupon||0) + '개 → ' + next + '개');
   const c = couponData.find(x=>(x.email||'').toLowerCase()===String(email).toLowerCase());
   if(c) c.coupon = next;
   return next;
 }
 
-
-/* ── 감사 기록 ────────────────────────────────────────────────────
-   추첨 · 쿠폰 증감 · 이벤트 상태 변경처럼 「나중에 왜 그랬는지」 를 물을 수 있는 동작을 남긴다.
-   쿠폰은 관리자가 임의로 올리고 내릴 수 있어 근거가 없으면 설명이 어렵다.
-   목록(WMC_Log)이 없으면 아무 일도 하지 않는다 — 기록을 남기려면 아래 열로 목록만 만들면 된다.
-     Title(기본) · Action · Actor · Target · Detail · LoggedAt
-   기록 실패가 업무를 막지 않도록 모든 오류는 삼키고 콘솔에만 남긴다. */
-const LIST_LOG = 'WMC_Log';
-let _logListOk = null;          // null=모름, false=없음(다시 시도 안 함), true=있음
-async function wmcLog(action, target, detail){
-  try{
-    if(_logListOk === false) return;
-    const actor = (user && (user.email||user.username)) || '-';
-    const now = new Date(Date.now()+9*3600*1000).toISOString().replace('T',' ').slice(0,19);
-    const body = {fields:{
-      Title: String(action).slice(0,60) + ' · ' + now,
-      Action: String(action).slice(0,120),
-      Actor: String(actor).slice(0,120),
-      Target: String(target==null?'':target).slice(0,200),
-      Detail: String(detail==null?'':detail).slice(0,900),
-      LoggedAt: new Date().toISOString()
-    }};
-    await api(`/sites/${siteId}/lists/${LIST_LOG}/items`,'POST',body);
-    _logListOk = true;
-  }catch(e){
-    const m = String(e && e.message || '');
-    if(/itemNotFound|does not exist|not found|404/i.test(m)){
-      _logListOk = false;
-      console.warn('[WMC] 기록 목록(' + LIST_LOG + ')이 없어 감사 기록을 건너뜁니다. 목록을 만들면 그때부터 남습니다.');
-    } else {
-      console.warn('[WMC] 감사 기록 실패(무시):', m.slice(0,120));
-    }
-  }
-}
 
 // ═══════════════════════════════════════════
 // APPLY / CANCEL
@@ -2124,13 +2088,11 @@ function evtPageGo(p){
 }
 
 async function changeEventStatus(evId, status){
-  const _evTitle = (() => { const e = (typeof _evtData!=='undefined' ? _evtData : []).find(x=>Number(x.id)===Number(evId)); return e ? (e.fields.Title||'') : ''; })();
   const msg = status==='Active'?'활성화':status==='Finished'?'종료':'비활성화';
   showConfirmModal(`이벤트를 ${msg}하시겠습니까?`, async()=>{
     loading(true);
     try{
       await api(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}`,'PATCH',{fields:{Status:status}});
-      wmcLog('이벤트 상태 변경', '이벤트 ' + evId + (_evTitle ? ' · ' + _evTitle : ''), '→ ' + status);
       await loadAdminEvents();
       await loadEvents();
     }catch(e){ alert('상태 변경 실패: '+e.message); }
@@ -2479,6 +2441,7 @@ function randomIndex(n){
 /* 마감 뒤 이만큼 지나야 자동 추첨을 돌린다(마감 직전 신청의 저장이 끝날 시간). */
 const DRAW_GRACE_MS = 60 * 1000;
 const _autoDrawPending = new Set();   // 마감 1분 뒤로 예약해 둔 이벤트 (중복 예약 방지)
+let _lastAutoDrawKey = '';            // 이번 주 예정 시각을 이미 돌렸는지 (요일·시·분을 담은 표식)
 
 function startDrawScheduler(){
   if(_drawTimer) clearInterval(_drawTimer);
@@ -2509,9 +2472,21 @@ function startDrawScheduler(){
       if(!s) s = JSON.parse(localStorage.getItem(DRAW_SCHEDULE_KEY)||'null');
     }
     if(s){
+      /* 예전에는 「지금이 정확히 그 요일·시·분인가」 로만 판정했다.
+         배경 탭의 setInterval 은 브라우저가 늦춰 1분을 통째로 건너뛸 수 있고(60초 간격이 70초로 벌어짐),
+         그러면 그 주 추첨이 아예 돌지 않았다. 관리자가 탭을 열어 둔 채 다른 일을 하면 흔히 생긴다.
+         이제는 「예정 시각이 지났고, 이번 주 예정 시각을 아직 돌리지 않았다」 로 본다.
+         늦게 열린 탭이 지난 추첨을 되살리지 않도록 2시간 안에서만 인정하고,
+         같은 주에 두 번 돌지 않게 예정 시각 자체를 표식으로 남긴다. */
       const now = new Date(new Date().getTime()+9*3600*1000);
       const sMin = s.min||0;
-      if(now.getUTCDay()===s.day && now.getUTCHours()===s.hour && now.getUTCMinutes()===sMin){
+      const _due = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(),
+        now.getUTCDate() - ((now.getUTCDay() - Number(s.day) + 7) % 7), Number(s.hour), Number(sMin), 0));
+      const _late = now.getTime() - _due.getTime();
+      const _key = _due.toISOString().slice(0,16);
+      if(_late >= 0 && _late < 2*3600*1000 && _lastAutoDrawKey !== _key){
+        _lastAutoDrawKey = _key;
+        if(_late > 90*1000) console.warn('[WMC] 예정 시각보다 ' + Math.round(_late/60000) + '분 늦게 자동 추첨을 시작합니다(브라우저 타이머 지연).');
         try{
           const data = await apiAllRetry(`/sites/${siteId}/lists/${LIST_EVENTS}/items?$expand=fields`);
           let active = data.value.filter(ev=>ev.fields.Status==='Active');
@@ -2757,8 +2732,6 @@ async function runDrawForEvent(evId, opts = {}){
       winnerCount++;
     }
     // ⑦ 이벤트 종료
-    wmcLog('추첨 실행', '이벤트 ' + evId + ' · ' + (ev.fields.Title||''),
-      (opts.auto?'자동':'수동') + ' · 당첨 ' + winnerCount + '건');
     await apiRetry(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}`,'PATCH',{fields:{Status:'Finished'}});
     console.log('[WMC] 추첨 완료 — 이벤트', evId, '당첨', winnerCount, '건');
     return {winnerCount};
@@ -2831,7 +2804,6 @@ async function removeCouponRow(email){
   loading(true,'삭제 중...');
   try{
     await apiRetry(`/sites/${siteId}/lists/${LIST_COUPONS}/items/${c.id}`,'DELETE');
-    wmcLog('쿠폰 행 삭제', email, '잔여 ' + (c.coupon==null?'-':c.coupon) + '개');
     couponData = couponData.filter(x=>x!==c);
     filterCoupon();
     const n = document.getElementById('coupon-fold-n');
@@ -2943,7 +2915,6 @@ async function syncAddSelected(){
       done++;
     }catch(err){ failed.push(e.email + ' (' + err.message + ')'); }
   }
-  if(done) wmcLog('쿠폰 행 추가', done + '명', '시작 쿠폰 ' + start + '개' + (failed.length ? ' · 실패 ' + failed.length + '건' : ''));
   await loadCouponData();
   body.innerHTML = '<div class="sync-sum"><div><div class="k">추가 완료</div><div class="v hl">' + done + '명</div></div>'
     + '<div><div class="k">시작 쿠폰</div><div class="v">' + start + '개</div></div>'
