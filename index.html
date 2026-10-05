@@ -77,7 +77,24 @@ body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:var(--text);font
 .header-right{flex-shrink:0}
 /* 가로로 놓이므로 제목과의 간격은 header-left 의 gap 이 맡는다. 위 여백은 뺀다.
    글자는 한 단계 키운다 — .66rem 은 세로로 쌓였을 때 높이를 줄이려던 값이었다. */
-.header .hdr-contact{margin-top:0;font-size:.7rem;padding:4px 11px 4px 10px}
+/* 10-05: BU Admin 칩을 각진 사각형에서 알약으로. 라벨은 안쪽 작은 알약, 이메일은 그 오른쪽 —
+   한 덩어리로 읽히되 라벨과 값이 구분된다. 옆의 쿠폰 알약(border-radius 20px)과 곡률 · 높이를 맞춘다.
+   예전 규칙에 border-color 만 있고 굵기가 없어 테두리가 보이지 않던 것도 여기서 실제 1px 선으로 둔다. */
+.header .hdr-contact{margin-top:0;font-size:.7rem;line-height:1;padding:3px 13px 3px 3px;
+  border:1px solid rgba(255,255,255,.24);border-radius:999px;background:rgba(255,255,255,.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 1px 2px rgba(8,24,56,.18);
+  transition:background .18s ease,border-color .18s ease}
+.header .hdr-contact:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.36)}
+.header .hdr-contact-tag{display:inline-flex;align-items:center;height:20px;padding:0 9px;margin-right:9px;
+  border-radius:999px;background:rgba(255,255,255,.92);color:#103a78;
+  font-size:.64rem;font-weight:700;letter-spacing:.02em}
+/* 이메일은 라벨 알약과 같은 20px 줄 높이로 두어 세로 가운데가 맞게 한다.
+   좁은 화면에서 「hye-」 / 「jin.yun@…」 처럼 하이픈에서 끊기지 않게 한 줄로 두고, 넘치면 … 으로 줄인다. */
+.header .hdr-contact{max-width:100%}
+.header .hdr-contact-mail{font-weight:500;letter-spacing:.005em;line-height:20px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.header .hdr-contact-mail a{color:#fff;opacity:.96}
+.header .hdr-contact-mail a:hover{opacity:1;text-decoration:underline;text-underline-offset:2px}
 .header-icon{font-size:1.4rem}
 .header-title{font-size:1rem;font-weight:700}
 .header-sub{font-size:.72rem;opacity:.75;margin-top:1px}
@@ -361,6 +378,13 @@ tbody tr:hover td{background:#fafbfd}
   .form-grid{grid-template-columns:1fr}
   .detail-meta-grid{grid-template-columns:1fr}
   .header-sub{display:none}
+  /* 10-05: 폰 폭에서는 오른쪽(이름 · 쿠폰 · 로그아웃)이 줄지 않아 왼쪽이 좁아지면서 제목과 이름이 겹치고
+     BU Admin 알약이 쪼그라들었다. 두 덩어리를 위아래 두 줄로 나눠 각자 전체 폭을 쓰게 한다. */
+  .header{flex-wrap:wrap;row-gap:8px;padding:10px 16px}
+  .header-left{flex:1 1 100%}
+  .header-right{flex:1 1 100%;justify-content:flex-end;gap:8px}
+  .header-right .hdr-user{min-width:0;flex:1 1 auto}
+  .btn-logout,.hdr-coupon{flex-shrink:0;white-space:nowrap}
 }
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
