@@ -408,7 +408,16 @@ html, * { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
 /* APS 모바일(10-09 · aps-mobile) — 767px 이하 전용. 웹 화면 무변경 */
 /* WMC: 결재 시스템이 아니라 V3 헤더 대신 기존 파란 헤더 유지(600px 규칙 존중). .card{overflow:hidden} 때문에 잘리던
    쿠폰 · 신청 기록 표는 감싼 div 를 가로 스크롤 상자로, 이벤트 관리 머리 · 항목 단추는 줄바꿈. 인라인 style 을 이겨야 하는 곳만 !important. */
-@media (max-width: 767px) {
+@media screen and (max-width: 767px) {
+  /* ── 2차(10-10) iPhone · Galaxy 방어 — 글자 자동 확대 끔, 입력 · 단추가 부모 폭을 넘지 않게.
+        날짜 칸은 브라우저 date 입력이 아니라 flatpickr(disableMobile, 읽기 전용 글칸)라 날짜 규칙은 넣지 않음 ── */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  input, select, textarea, button { max-width: 100%; box-sizing: border-box; }
+  /* 한 줄에 나란한 검색 · 선택 · 단추는 높이를 36px 로 명시(iOS 기본 select 높이와 상관없이 맞게) */
+  #filter-status, #adm-evt-q, #adm-evt-filter, #hist-search, #hist-filter-status, #hist-filter-event,
+  #draw-day-sel, #draw-hour-sel, #draw-min-sel { height: 36px; }
+  #page-list > div:first-child .btn-sm, .card-header > div[style*="display:flex"] > .btn-sm, #draw-min-sel ~ .btn { height: 36px; }
+
   /* ── 헤더 · 탭 · 바깥 여백 ── */
   .header { padding: 10px 12px; }
   .header-title { font-size: .95rem; }
@@ -453,16 +462,19 @@ html, * { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
   .vehicle-row { display: grid; grid-template-columns: 1fr 1fr auto; }
   .vehicle-row input:first-child { grid-column: 1 / -1; }
   .vehicle-row input { padding: 8px 10px; border: 1px solid var(--gray2); border-radius: 4px; }
+  .vehicle-row > .btn { height: 38px; min-height: 38px; }   /* ✕ 를 입력칸(38px)과 같은 높이로(2차) */
   .card-body > div[style*="margin-top:16px;display:flex"] > .btn { flex: 1 1 0; padding: 10px 8px; }
   /* 쿠폰 · 신청 기록 표 — 카드가 아니라 표 상자만 가로 스크롤, 셀 줄바꿈 없음 */
   #coupon-table-body, #winner-history-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* 쿠폰 조정 칸 − · 수 · ＋ · ✓ 같은 높이 32px(2차 — ✓ 22 · 입력 28 · 단추 32 로 들쭉날쭉하던 것) */
+  td > div:has(> input[id^="coupon-inp-"]) > * { height: 32px; min-height: 32px; box-sizing: border-box; }
   #coupon-table-body th, #coupon-table-body td, #winner-history-table th, #winner-history-table td { white-space: nowrap; }
   #hist-search { flex: 1 1 100% !important; min-width: 0 !important; }
   #hist-filter-status, #hist-filter-event { flex: 1 1 0; min-width: 0; max-width: none !important; }
   /* 추첨 실행 — 카드로 감싸지 않은 구역이라 모바일에서는 카드 모양을 입힌다 */
   #page-admin > .card-header { background: #fff; border-radius: var(--radius) var(--radius) 0 0; box-shadow: var(--shadow); margin-top: 8px; }
   #page-admin > .card-header + .card-body { background: #fff; border-radius: 0 0 var(--radius) var(--radius); box-shadow: var(--shadow); }
-  .dmode-btn { padding: 10px 8px; font-size: .8rem; min-height: 44px; }
+  .dmode-btn { padding: 10px 8px; font-size: .8rem; min-height: 44px; text-align: center; line-height: 1.3; text-wrap: balance; word-break: keep-all; }
   .sc-scope { flex-wrap: wrap; gap: 6px 14px; }
   .sc-scope > span { flex: 1 1 100%; }
   .sc-scope label { white-space: nowrap; }
