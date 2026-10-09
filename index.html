@@ -404,6 +404,89 @@ html, * { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
 .flatpickr-input{background:#fff!important;cursor:pointer}
 .flatpickr-calendar{font-family:inherit;box-shadow:0 8px 24px rgba(0,0,0,.15)}
 </style>
+<style id="aps-mobile">
+/* APS 모바일(10-09 · aps-mobile) — 767px 이하 전용. 웹 화면 무변경 */
+/* WMC: 결재 시스템이 아니라 V3 헤더 대신 기존 파란 헤더 유지(600px 규칙 존중). .card{overflow:hidden} 때문에 잘리던
+   쿠폰 · 신청 기록 표는 감싼 div 를 가로 스크롤 상자로, 이벤트 관리 머리 · 항목 단추는 줄바꿈. 인라인 style 을 이겨야 하는 곳만 !important. */
+@media (max-width: 767px) {
+  /* ── 헤더 · 탭 · 바깥 여백 ── */
+  .header { padding: 10px 12px; }
+  .header-title { font-size: .95rem; }
+  .tab-bar { padding: 0 12px; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-btn { flex: 0 0 auto; white-space: nowrap; min-height: 44px; padding: 12px 14px; }
+  #tab-admin { margin: 6px 0 6px 4px; min-height: 32px; padding: 0 12px !important; }
+  .page { padding: 16px 12px; }
+  .card-header { padding: 12px 14px; flex-wrap: wrap; row-gap: 8px; }
+  .card-body { padding: 14px; }
+  .card-title, .card-fold { white-space: nowrap; flex-shrink: 0; }
+  .card-header .card-tools { flex-wrap: wrap; justify-content: flex-end; }
+  .status-badge, .app-status { white-space: nowrap; flex-shrink: 0; }
+  .btn, .page-btn { white-space: nowrap; }
+  .btn-sm { min-height: 32px; }
+
+  /* 입력 · 선택 글자 16px(iOS 자동 확대 방지) — 인라인 font-size 를 이긴다. 달력(flatpickr, body 직속)은 제외 */
+  #app input:not([type=checkbox]):not([type=radio]), #app select, #app textarea,
+  .modal-box input:not([type=checkbox]):not([type=radio]) { font-size: 16px !important; }
+  .form-group input, .form-group select, .form-group textarea { padding: 9px 10px; }
+
+  /* ── 추첨 목록 · 상세 · 내 신청 ── */
+  .event-card-body { padding: 12px 14px; }
+  .detail-header { padding: 16px 14px; }
+  .detail-title { font-size: 1.05rem; }
+  .detail-header > div:first-child { gap: 10px; align-items: flex-start !important; }
+  .vehicle-table th, .vehicle-table td { white-space: nowrap; }
+  #my-content .card-body { gap: 10px; }
+  #my-content .card-body > div:first-child { min-width: 0; }
+  .how { margin: 20px 0 12px; }
+
+  /* ── 관리자 ── */
+  /* 「이벤트 관리」 머리: 제목 한 줄, 검색 · 필터 · 새로고침은 아래 줄에 꽉 채움 */
+  .card-header > div[style*="display:flex"] { flex: 1 1 100%; min-width: 0; flex-wrap: wrap; }
+  #adm-evt-q { flex: 1 1 100%; width: 0; min-width: 0 !important; }
+  #adm-evt-filter { flex: 1 1 0; min-width: 0; }
+  /* 이벤트 항목: 정보 위 · 단추 아래(줄바꿈), 상태 배지는 오른쪽 끝 */
+  .admin-event-item { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px 14px; }
+  .admin-event-actions { flex-wrap: wrap; align-items: center; }
+  .admin-event-actions .status-badge { margin-left: auto !important; }
+  /* 차량 등록 행: 모델 한 줄, 색상 · 번호판 · ✕ 아래 줄 */
+  .vehicle-row { display: grid; grid-template-columns: 1fr 1fr auto; }
+  .vehicle-row input:first-child { grid-column: 1 / -1; }
+  .vehicle-row input { padding: 8px 10px; border: 1px solid var(--gray2); border-radius: 4px; }
+  .card-body > div[style*="margin-top:16px;display:flex"] > .btn { flex: 1 1 0; padding: 10px 8px; }
+  /* 쿠폰 · 신청 기록 표 — 카드가 아니라 표 상자만 가로 스크롤, 셀 줄바꿈 없음 */
+  #coupon-table-body, #winner-history-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #coupon-table-body th, #coupon-table-body td, #winner-history-table th, #winner-history-table td { white-space: nowrap; }
+  #hist-search { flex: 1 1 100% !important; min-width: 0 !important; }
+  #hist-filter-status, #hist-filter-event { flex: 1 1 0; min-width: 0; max-width: none !important; }
+  /* 추첨 실행 — 카드로 감싸지 않은 구역이라 모바일에서는 카드 모양을 입힌다 */
+  #page-admin > .card-header { background: #fff; border-radius: var(--radius) var(--radius) 0 0; box-shadow: var(--shadow); margin-top: 8px; }
+  #page-admin > .card-header + .card-body { background: #fff; border-radius: 0 0 var(--radius) var(--radius); box-shadow: var(--shadow); }
+  .dmode-btn { padding: 10px 8px; font-size: .8rem; min-height: 44px; }
+  .sc-scope { flex-wrap: wrap; gap: 6px 14px; }
+  .sc-scope > span { flex: 1 1 100%; }
+  .sc-scope label { white-space: nowrap; }
+
+  /* ── 모달 · 로딩 · 토스트 ── */
+  .modal-box { width: calc(100vw - 20px); max-height: 90vh; padding: 18px 16px; }
+  .modal-actions .btn { flex: 1 1 0; min-height: 42px; }
+  .sync-row .nm { flex-basis: 110px; }
+  #no-auth-modal > div { width: calc(100vw - 20px) !important; padding: 28px 20px !important; }
+  #no-auth-modal button { width: 100%; min-height: 44px; }
+  #toast-popup { width: max-content; max-width: calc(100vw - 32px); min-width: 0 !important; padding: 22px 24px !important; }
+  .loading-box { max-width: calc(100vw - 40px); padding: 24px 28px; }
+
+  /* ── 로그인 · 바닥글 ── */
+  #login-screen { padding: 16px; }
+  .login-card { padding: 36px 22px; border-radius: 20px; }
+  .login-logo-wrap { width: 64px; height: 64px; margin-bottom: 18px; }
+  .login-sub { margin-bottom: 24px; }
+  .btn-ms-login { min-height: 46px; }
+  body > footer { margin-top: 28px !important; padding: 16px 12px !important; }
+  body > footer > div { justify-content: center !important; text-align: center; }
+  body > footer > div > div { text-align: center !important; }
+}
+</style>
 </head>
 <body>
 
