@@ -913,7 +913,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-10-05.1';
+const APP_VERSION = '2026-10-10.1';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
@@ -1597,6 +1597,7 @@ async function setCouponTo(email, value){
   if(!r.ok) throw new Error(r.status + ' 쿠폰 저장 실패' + (r.status===412 ? ' (그 사이 값이 바뀌었습니다. 새로고침 후 다시 시도해 주세요)' : ''));
   const c = couponData.find(x=>(x.email||'').toLowerCase()===String(email).toLowerCase());
   if(c) c.coupon = next;
+  await wmcAudit('쿠폰 값 지정', { email: String(email), 이전: Number(cur.fields.Coupon||0), 새값: next });   // 관리자 조정 기록(10-10)
   return next;
 }
 
@@ -1689,7 +1690,8 @@ async function applyVehicle(eventId, vehicleId, vehicleName){
           try{
             await updateCouponBy(myCoupon.email, -couponCost);
           }catch(retryErr){
-            // 재시도도 실패 시 관리자 안내
+            // 재시도도 실패 시 관리자 안내 — 신청은 됐는데 쿠폰이 안 빠진 사람을 관리자가 찾을 수 있게 남긴다(10-10)
+            await wmcAudit('쿠폰 차감 실패', { email: myCoupon.email, 이벤트: Number(eventId), 차량: Number(vehicleId), 쿠폰: couponCost, 오류: String(retryErr && retryErr.message || retryErr).slice(0, 200) });
             loading(false);
             showToast('신청은 완료됐으나 쿠폰 차감에 실패했습니다. 관리자에게 문의해주세요.', '⚠️', 5000);
             await Promise.all([loadMyCoupons(), loadMyApplications()]);
@@ -1749,6 +1751,7 @@ async function cancelApplication(appId, eventId){
             await updateCouponBy(myCoupon.email, couponCost);
           }catch(ce2){
             console.error('[WMC] 취소 후 쿠폰 반환 실패:', myCoupon.email, ce2 && ce2.message);
+            await wmcAudit('환급 실패', { 경위: '신청 취소 반환', email: myCoupon.email, 이벤트: Number(eventId), 신청: Number(appId), 쿠폰: couponCost, 오류: String(ce2 && ce2.message || ce2).slice(0, 200) });   // (10-10)
             loading(false);
             showToast('신청은 취소됐으나 쿠폰 반환에 실패했습니다. 관리자에게 문의해주세요.', '⚠️', 5000);
             await Promise.all([loadMyCoupons(), loadMyApplications()]);
@@ -2719,6 +2722,58 @@ async function drivePutJson(name, obj){
   if(!r.ok) throw new Error(name+' 저장 실패 ('+r.status+')');
 }
 
+/* ── 감사 기록(10-10) ─────────────────────────────────────────────
+   724e375(10-05) 에서 WMC_Log 목록 기록을 들어낸 뒤 추첨 · 쿠폰 조정 · 환급 실패가 어디에도 남지 않았다.
+   복지 혜택 배분이라 「누가 언제 추첨했고, 누가 쿠폰을 몇 개로 바꿨고, 환급이 빠진 사람이 있는가」 를 나중에 확인할 수 있어야 한다.
+   새 목록은 만들지 않고 다른 APS 시스템과 같은 방식으로 문서 라이브러리에 JSON 파일 하나씩 남긴다:
+     Logging_data/WMC/YYYY-MM-DD/HHmmss_사용자_난수.json  { timestampKST, user, system:'WMC', action, detail }
+   남기는 것(쓰기 최소화 방침에 맞춰 사건 하나에 파일 하나):
+     · 추첨 결과(자동/수동) — 차량별 당첨자 · 낙첨자 · 환급 결과를 한 파일에. 중간에 멈추면 「추첨 중단」 + 그때까지의 결과.
+     · 환급 실패 — 추첨 낙첨 환급 · 신청 취소 반환 · 신청 차감 실패(쿠폰이 맞지 않게 된 사람)를 따로 한 파일.
+     · 관리자 쿠폰 조정 — 값 지정(이전 → 새 값) · 증감 · 쿠폰 행 추가 · 삭제.
+   일반 신청 · 취소의 정상 차감 · 반환은 남기지 않는다(신청 행이 곧 기록).
+   다른 시스템의 접속 이력과 달리 IT 운영 계정(Role: IT Manager · IT system service)도 제외하지 않는다 — 추첨 · 쿠폰은 업무 기록이다.
+   기록 실패는 업무를 막지 않고 콘솔에 남긴다(돌려주는 값 true/false). */
+const WMC_LOG_SYSTEM = 'WMC';
+const _wmcLogFolders = new Set();
+async function _wmcEnsureLogFolder(driveId, folderPath, t){
+  if(_wmcLogFolders.has(folderPath)) return true;
+  const parts = folderPath.split('/').filter(Boolean); let cur = '';
+  for(const part of parts){
+    const nextPath = cur ? cur + '/' + part : part;
+    const chk = await fetch(GRAPH + '/drives/' + driveId + '/root:/' + nextPath, {headers:{Authorization:'Bearer '+t}});
+    if(chk.ok){ cur = nextPath; continue; }
+    const parentUrl = cur ? GRAPH + '/drives/' + driveId + '/root:/' + cur + ':/children' : GRAPH + '/drives/' + driveId + '/root/children';
+    const res = await fetch(parentUrl, {method:'POST', headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},
+      body: JSON.stringify({name: part, folder: {}, '@microsoft.graph.conflictBehavior': 'fail'})});
+    if(!res.ok && res.status !== 409){ console.warn('[WMC] 기록 폴더 생성 실패:', nextPath, res.status); return false; }
+    cur = nextPath;
+  }
+  _wmcLogFolders.add(folderPath); return true;
+}
+async function wmcAudit(action, detail){
+  try{
+    if(!siteId) return false;
+    const driveId = await docDrive();
+    const t = await token();
+    const now = new Date(Date.now() + 9*3600*1000);
+    const p2 = n => String(n).padStart(2,'0');
+    const dateStr = now.getUTCFullYear() + '-' + p2(now.getUTCMonth()+1) + '-' + p2(now.getUTCDate());
+    const timeStr = p2(now.getUTCHours()) + p2(now.getUTCMinutes()) + p2(now.getUTCSeconds());
+    const rawUser = (user && (user.email || user.username)) || 'unknown';
+    const userTag = String(rawUser).split('@')[0].replace(/[^a-zA-Z0-9._-]/g, '_');
+    const rand = Math.random().toString(36).slice(2, 6);
+    const folderPath = 'Logging_data/' + WMC_LOG_SYSTEM + '/' + dateStr;
+    if(!(await _wmcEnsureLogFolder(driveId, folderPath, t))) return false;
+    const body = JSON.stringify({ timestampKST: dateStr + ' ' + p2(now.getUTCHours()) + ':' + p2(now.getUTCMinutes()) + ':' + p2(now.getUTCSeconds()),
+      user: rawUser, system: WMC_LOG_SYSTEM, action, detail: detail || {}, version: APP_VERSION });
+    const r = await fetch(GRAPH + '/drives/' + driveId + '/root:/' + folderPath + '/' + timeStr + '_' + userTag + '_' + rand + '.json:/content',
+      {method:'PUT', headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'}, body});
+    if(!r.ok){ console.warn('[WMC] 감사 기록 실패:', action, r.status); return false; }
+    return true;
+  }catch(e){ console.warn('[WMC] 감사 기록 실패(무시):', action, e && e.message); return false; }
+}
+
 /* 배포 버전 확인 — 오래 열린 탭이 옛 코드로 추첨하지 않게 한다.
    서버의 index.html 을 캐시 없이 받아 APP_VERSION 을 비교한다. 다르면 이 탭은 추첨하지 않는다.
    확인 자체가 실패하면(오프라인 등) 막지 않는다 — 추첨이 아예 안 도는 쪽이 더 위험하다. */
@@ -2803,6 +2858,7 @@ async function runDrawForEvent(evId, opts = {}){
   const lock = await acquireDrawLock(evId);
   if(!lock) return null;
   _drawBusy = true;
+  let _audit = null;
   try{
     // ④ 이벤트 상태를 서버에서 다시 확인 — 이미 추첨이 끝났으면 하지 않는다
     const ev = await apiRetry(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}?$expand=fields`);
@@ -2819,6 +2875,8 @@ async function runDrawForEvent(evId, opts = {}){
     ]);
     const couponCost = ev.fields.CouponCost||1;
     let winnerCount = 0;
+    // 감사 기록(10-10) — 차량별 결과 · 환급 결과를 모아 추첨 1회에 파일 1개로 남긴다
+    _audit = { 이벤트: Number(evId), 제목: ev.fields.Title || '', 방식: opts.auto ? '자동' : '수동', 쿠폰: couponCost, 차량: [], 환급실패: [] };
     for(const veh of vehs.value.filter(v=>Number(v.fields.EventID)===Number(evId))){
       /* 이미 당첨자가 있으면 그 사람을 그대로 당첨자로 삼고, 남은 신청자만 낙첨 처리한다.
          vApps 는 'Applied' 만 고르므로, 앞선 시도가 당첨자만 확정하고 중간에 끊겼다면
@@ -2833,6 +2891,8 @@ async function runDrawForEvent(evId, opts = {}){
       if(_already && !vApps.length) continue;                  // 이미 다 끝난 차량
       if(!_already && !vApps.length) continue;                 // 신청자가 없는 차량
       let winner = _already || null;
+      const _va = { 차량: Number(veh.id), 모델: veh.fields.Model || '', 신청: vApps.length + (_already ? 1 : 0), 당첨: null, 이어서: !!_already, 낙첨: [] };
+      _audit.차량.push(_va);
       if(!winner){
         // 차량별로 신청자 중 한 명을 뽑는다. 가중치·지정 당첨 같은 예외는 두지 않는다
         // (09-18: SharePoint 파일로 특정인을 당첨시키던 지정 당첨 기능을 제거했다).
@@ -2854,6 +2914,7 @@ async function runDrawForEvent(evId, opts = {}){
         console.warn('[WMC] 이 차량은 당첨자가 이미 정해져 있어 그대로 두고 남은 낙첨 처리만 이어서 합니다:',
           veh.id, veh.fields.Model||'', winner.fields.ApplicantEmail||'');
       }
+      _va.당첨 = { 신청: Number(winner.id), email: winner.fields.ApplicantEmail || '', 이름: winner.fields.ApplicantName || '' };
       /* 상태를 먼저 바꾸고 그 다음에 환급한다. 순서가 중요하다 —
          환급을 먼저 하면 「환급은 됐는데 상태는 Applied」 인 상태로 끊길 수 있고,
          재시도가 같은 사람에게 또 환급한다(이중 환급).
@@ -2878,15 +2939,28 @@ async function runDrawForEvent(evId, opts = {}){
         /* 환급은 증감으로 한다 — 추첨 도중 관리자가 조정했거나 화면의 값이 낡았어도
            목록의 현재 값에 더해지므로 잔액이 틀어지지 않는다. 목록에 행이 없는 사람은
            기록만 남기고 넘어간다(관리자 화면의 「직원 명단 동기화」로 행을 만들면 된다). */
-        try{ await updateCouponBy(em, couponCost); }
-        catch(ce){ console.error('[WMC] 낙첨 쿠폰 환급 실패(수동 확인 필요):', em, ce && ce.message); }
+        try{ await updateCouponBy(em, couponCost); _va.낙첨.push({ 신청: Number(loser.id), email: em, 환급: couponCost }); }
+        catch(ce){
+          console.error('[WMC] 낙첨 쿠폰 환급 실패(수동 확인 필요):', em, ce && ce.message);
+          const _f = { 신청: Number(loser.id), email: em, 환급: 0, 오류: String(ce && ce.message || ce).slice(0, 200) };
+          _va.낙첨.push(_f); _audit.환급실패.push(Object.assign({ 차량: Number(veh.id) }, _f));
+        }
       }
       winnerCount++;
     }
     // ⑦ 이벤트 종료
     await apiRetry(`/sites/${siteId}/lists/${LIST_EVENTS}/items/${evId}`,'PATCH',{fields:{Status:'Finished'}});
     console.log('[WMC] 추첨 완료 — 이벤트', evId, '당첨', winnerCount, '건');
+    _audit.당첨수 = winnerCount;
+    await wmcAudit('추첨 결과', _audit);
+    if(_audit.환급실패.length) await wmcAudit('환급 실패', { 경위: '추첨 낙첨 환급', 이벤트: Number(evId), 제목: _audit.제목, 쿠폰: couponCost, 대상: _audit.환급실패 });
+    _audit = null;
     return {winnerCount};
+  } catch(e){
+    // 중간에 멈춘 추첨 — 그때까지 바뀐 당첨 · 환급을 남겨 둔다(다시 실행하면 이어서 마무리한다)
+    if(_audit){ _audit.오류 = String(e && e.message || e).slice(0, 300); await wmcAudit('추첨 중단', _audit);
+      if(_audit.환급실패.length) await wmcAudit('환급 실패', { 경위: '추첨 낙첨 환급(중단된 추첨)', 이벤트: Number(evId), 제목: _audit.제목, 대상: _audit.환급실패 }); }
+    throw e;
   } finally { _drawBusy = false; await releaseDrawLock(lock); }
 }
 
@@ -2956,6 +3030,7 @@ async function removeCouponRow(email){
   loading(true,'삭제 중...');
   try{
     await apiRetry(`/sites/${siteId}/lists/${LIST_COUPONS}/items/${c.id}`,'DELETE');
+    await wmcAudit('쿠폰 행 삭제', { email: c.email, 이름: c.name || '', 잔여쿠폰: c.coupon == null ? null : Number(c.coupon) });   // (10-10)
     couponData = couponData.filter(x=>x!==c);
     filterCoupon();
     const n = document.getElementById('coupon-fold-n');
@@ -3067,6 +3142,7 @@ async function syncAddSelected(){
       done++;
     }catch(err){ failed.push(e.email + ' (' + err.message + ')'); }
   }
+  if(done || failed.length) await wmcAudit('쿠폰 행 추가', { 추가: done, 시작쿠폰: start, 대상: targets.map(x=>x.email), 실패: failed });   // (10-10)
   await loadCouponData();
   body.innerHTML = '<div class="sync-sum"><div><div class="k">추가 완료</div><div class="v hl">' + done + '명</div></div>'
     + '<div><div class="k">시작 쿠폰</div><div class="v">' + start + '개</div></div>'
@@ -3228,7 +3304,8 @@ async function applyCoupon(email){
 async function adjustCoupon(email, current, delta){
   loading(true, '쿠폰 저장 중...');
   try{
-    await updateCouponBy(email, delta);
+    const _next = await updateCouponBy(email, delta);
+    await wmcAudit('쿠폰 증감', { email: String(email), 증감: Number(delta), 새값: _next });   // 관리자 조정 기록(10-10)
     await loadCouponData();
     loading(false);
     showToast('쿠폰 저장 완료!', '✅');
