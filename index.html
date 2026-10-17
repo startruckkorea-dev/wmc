@@ -995,7 +995,7 @@ function showNoAuth(kind){
   const t = document.getElementById('no-auth-title'), b = document.getElementById('no-auth-msg'), g = document.getElementById('no-auth-guide');
   if(t) t.textContent = cfg ? '관리자 확인 불가' : '접근 권한 없음';
   if(b) b.innerHTML = cfg
-    ? '설정 파일(system_config_final.xlsx)을 읽지 못해<br>관리자인지 확인할 수 없습니다.<br>잠시 뒤 새로고침(F5) 후 다시 눌러 주세요.<br>계속되면 IT팀(stk_it@hyosung.com)에 알려 주세요.'
+    ? '설정 파일(system_config_final.xlsx)을 읽지 못해<br>관리자인지 확인할 수 없습니다.<br>잠시 뒤 새로고침(F5) 후 다시 눌러 주세요.<br>계속되면 '+itTeam('IT팀')+'에 알려 주세요.'
     : '관리자 전용 메뉴입니다.<br>접근 권한이 없습니다.';
   if(g) g.style.display = cfg ? 'none' : '';
   m.style.display = 'flex';
@@ -1170,6 +1170,33 @@ async function loadSystemConfig() {
     return null;
   }
 }
+/* IT 문의 메일(10-17) — 코드에 메일 주소를 두지 않는다. system_config_final.xlsx 의 WM_IT_CONTACT(C열) → 없으면 CONTACT_EMAIL 순으로 채우고,
+   설정을 못 읽었으면(로그인 전 · 읽기 실패) 메일 없이 「IT팀」 만 보인다. 형식이 맞는 메일만 받으므로 HTML 에 그대로 넣어도 안전하다.
+   data-it-contact 가 붙은 화면 칸은 설정을 읽은 뒤 메일 링크로 바뀐다. */
+var IT_CONTACT_KEY = 'WM_IT_CONTACT', __itMail = '';
+function itTeam(label) { label = label || 'IT팀'; return __itMail ? label + '(' + __itMail + ')' : label; }
+function itApplyDom() {
+  try {
+    document.querySelectorAll('[data-it-contact]').forEach(function (el) {
+      el.textContent = '';
+      if (!__itMail) { el.textContent = el.getAttribute('data-it-contact') || 'IT팀'; return; }
+      var a = document.createElement('a'); a.href = 'mailto:' + __itMail; a.textContent = __itMail;
+      a.style.color = '#0078d4'; a.style.textDecoration = 'none'; el.appendChild(a);
+    });
+  } catch (e) {}
+}
+function itSetFromCfg(cfg) {
+  try {
+    if (!cfg || typeof cfg !== 'object') return;
+    var keys = Object.keys(cfg);
+    var pick = function (k) { var kk = keys.find(function (x) { return String(x).trim().toUpperCase() === k.toUpperCase(); }); return kk && cfg[kk] ? String(cfg[kk].email || '').trim().toLowerCase() : ''; };
+    var ok = function (v) { return /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v); };
+    var mail = [pick(IT_CONTACT_KEY), pick('CONTACT_EMAIL')].find(ok);
+    if (mail) __itMail = mail;
+    itApplyDom();
+  } catch (e) {}
+}
+loadSystemConfig = (function (orig) { return async function () { var c = await orig.apply(this, arguments); itSetFromCfg(c || (typeof _sysConfig !== 'undefined' ? _sysConfig : null)); return c; }; })(loadSystemConfig);
 
 /* 설정 파일에서 관리자 명단을 정한다. 성공하면 true.
    · WM_ADMIN_ 뒤가 숫자인 키만 모은다(WM_ADMIN_TIME 같은 다른 설정은 제외). 번호 사이가 비어도 끝까지 읽는다 —
