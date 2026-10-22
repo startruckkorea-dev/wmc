@@ -926,7 +926,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-10-10.1';
+const APP_VERSION = '2026-10-22.1';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
@@ -1482,7 +1482,7 @@ async function showDetail(eventId){
         if(myApp && myApp.fields.Status==='Applied'){
           actionBtn = `<button class="btn-cancel" onclick="cancelApplication(${myApp.id},${eventId});event.stopPropagation()">취소</button>`;
         } else if(!myApp && !alreadyApplied){
-          actionBtn = `<button class="btn-apply" onclick="applyVehicle(${eventId},${v.id},'${(vf.Model||'').replace(/'/g,"\'")}');event.stopPropagation()">신청</button>`;
+          actionBtn = `<button class="btn-apply" data-m="${_esc(vf.Model||'')}" onclick="applyVehicle(${eventId},${v.id},this.dataset.m);event.stopPropagation()">신청</button>`;
         }
       }
 
@@ -1496,11 +1496,11 @@ async function showDetail(eventId){
       }
 
       return `<tr>
-        <td>${vf.Model||'-'}</td>
-        <td>${vf.Color||'-'}</td>
-        <td>${vf.PlateNo||'-'}</td>
+        <td>${_esc(vf.Model||'-')}</td>
+        <td>${_esc(vf.Color||'-')}</td>
+        <td>${_esc(vf.PlateNo||'-')}</td>
         <td style="text-align:center">${vApps.filter(a=>['Applied','Winner','NotSelected'].includes(a.fields.Status)).length}</td>
-        <td>${winner ? winner.fields.ApplicantName||'-' : '-'}</td>
+        <td>${winner ? _esc(winner.fields.ApplicantName||'-') : '-'}</td>
         <td>${appStatusHtml || '<span class="tbl-dash">-</span>'}</td>
         <td style="text-align:center">${actionBtn || '<span class="tbl-dash">-</span>'}</td>
       </tr>`;
@@ -1553,7 +1553,7 @@ async function showDetail(eventId){
         </div>
       </div>
 
-      ${f.Notice ? `<div class="card"><div class="card-body"><div class="notice-box">${f.Notice.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').trim()}</div></div></div>` : ''}
+      ${f.Notice ? `<div class="card"><div class="card-body"><div class="notice-box">${_esc(f.Notice.replace(/<[^>]*>?/g,'').replace(/&nbsp;/g,' ').trim())}</div></div></div>` : ''}
     `;
 
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -1863,7 +1863,7 @@ function renderMyPage(){
     return `<div class="card" style="margin-bottom:12px;cursor:pointer" onclick="toggleMyDetail(this)">
       <div class="card-body" style="display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-weight:700;margin-bottom:3px">${ev?ev.fields.Title:('이벤트 #'+f.EventID)}</div>
+          <div style="font-weight:700;margin-bottom:3px">${_esc(ev?ev.fields.Title:('이벤트 #'+f.EventID))}</div>
           <div style="font-size:.78rem;color:var(--text2)">신청일: ${fmtDate(f.AppliedDate)}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -1873,9 +1873,9 @@ function renderMyPage(){
       </div>
       <div class="my-detail" style="display:none;border-top:1px solid var(--gray2);padding:14px 16px;background:#f8fafc">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.83rem">
-          <div><span style="color:var(--text2)">차량 모델</span><br><strong>${vf.Model||'-'}</strong></div>
-          <div><span style="color:var(--text2)">색상</span><br><strong>${vf.Color||'-'}</strong></div>
-          <div><span style="color:var(--text2)">번호판</span><br><strong>${vf.PlateNo||'-'}</strong></div>
+          <div><span style="color:var(--text2)">차량 모델</span><br><strong>${_esc(vf.Model||'-')}</strong></div>
+          <div><span style="color:var(--text2)">색상</span><br><strong>${_esc(vf.Color||'-')}</strong></div>
+          <div><span style="color:var(--text2)">번호판</span><br><strong>${_esc(vf.PlateNo||'-')}</strong></div>
           <div><span style="color:var(--text2)">경쟁 인원</span><br><strong>${competitors}명</strong></div>
           <div><span style="color:var(--text2)">사용 쿠폰</span><br><strong>${couponCost}개</strong></div>
           <div><span style="color:var(--text2)">이용 기간</span><br><strong>${ev?fmtDT(ev.fields.AvailableStart)+' ~<br>'+fmtDT(ev.fields.AvailableEnd):'-'}</strong></div>
@@ -1928,11 +1928,11 @@ async function loadWinnerHistory(){
     if(evSel){
       const evIds = [...new Set(_histApps.map(a=>a.fields.EventID))];
       evSel.innerHTML = '<option value="all">전체 이벤트</option>'
-        + evIds.map(id=>{ const ev=_histEvs.find(e=>Number(e.id)===Number(id)); return `<option value="${id}">${ev?ev.fields.Title:'#'+id}</option>`; }).join('');
+        + evIds.map(id=>{ const ev=_histEvs.find(e=>Number(e.id)===Number(id)); return `<option value="${_esc(id)}">${_esc(ev?ev.fields.Title:'#'+id)}</option>`; }).join('');
     }
 
     renderHistoryTable();
-  }catch(e){ console.error(e); document.getElementById('winner-history-table').innerHTML='<div style="color:var(--red)">조회 실패: '+e.message+'</div>'; }
+  }catch(e){ console.error(e); document.getElementById('winner-history-table').innerHTML='<div style="color:var(--red)">조회 실패: '+_esc(e.message)+'</div>'; }
   finally{ loading(false); }
 }
 
@@ -1995,9 +1995,9 @@ function renderHistoryTable(keepPage){
         const totalApps = _histApps.filter(ap=>Number(ap.fields.VehicleID)===Number(f.VehicleID)).length;
         const rowBg = f.Status==='Winner'?'#f0fff4':'';
         return `<tr style="border-bottom:1px solid var(--gray2);background:${rowBg}">
-          <td style="padding:8px 10px;font-weight:600">${ev?ev.fields.Title:('#'+f.EventID)}</td>
+          <td style="padding:8px 10px;font-weight:600">${_esc(ev?ev.fields.Title:('#'+f.EventID))}</td>
           <td style="padding:8px 10px">${_esc(f.ApplicantName||f.ApplicantEmail||'-')}</td>
-          <td style="padding:8px 10px">${veh?veh.fields.Model||'-':'-'}</td>
+          <td style="padding:8px 10px">${_esc(veh?veh.fields.Model||'-':'-')}</td>
           <td style="padding:8px 10px">${veh?veh.fields.PlateNo||'-':'-'}</td>
           <td style="padding:8px 10px;text-align:center">${totalApps}명</td>
           <td style="padding:8px 10px;text-align:center;font-weight:700;color:${statusColor(f.Status)}">${statusLabel(f.Status)}</td>
@@ -2855,27 +2855,32 @@ const DRAW_LOCK_TTL = 10 * 60 * 1000;
    추첨 중간에 새로고침되면 부분 처리 상태가 남는다. */
 let _drawBusy = false;
 let _lastAutoActChk = 0;      // 자동 활성화 마지막 확인 시각
+/* 10-22: 잠금 파일을 이벤트마다 따로 둔다. 예전에는 파일 하나를 모든 이벤트가 같이 써서, A 를 추첨하는 동안
+   다른 탭이 B 를 시작하면 파일이 B 로 덮이고 B 가 끝나며 비워져 — 세 번째 탭이 A 를 다시 집을 수 있었다. */
+const drawLockFile = evId => DRAW_LOCK_FILE.replace(/\.json$/, '_' + String(evId).replace(/[^0-9A-Za-z_-]/g, '') + '.json');
 async function acquireDrawLock(evId){
   const me = (user && (user.email||user.username)) || 'unknown';
   const token_ = me + '|' + Date.now() + '|' + Math.random().toString(36).slice(2, 8);
+  const LF = drawLockFile(evId);
   try{
-    const cur = await driveGet(DRAW_LOCK_FILE);
+    const cur = await driveGet(LF);
     if(cur && String(cur.eventId) === String(evId) && cur.at && (Date.now() - cur.at) < DRAW_LOCK_TTL){
       console.warn('[WMC] 다른 곳에서 이미 추첨 중입니다:', cur.by, new Date(cur.at).toISOString());
       return null;
     }
-    await drivePutJson(DRAW_LOCK_FILE, {eventId:String(evId), by:me, at:Date.now(), token:token_, version:APP_VERSION});
+    await drivePutJson(LF, {eventId:String(evId), by:me, at:Date.now(), token:token_, version:APP_VERSION});
     await new Promise(r=>setTimeout(r, 700));        // 동시에 쓴 쪽이 있으면 마지막 쓰기가 남는다
-    const after = await driveGet(DRAW_LOCK_FILE);
+    const after = await driveGet(LF);
     if(!after || after.token !== token_){
       console.warn('[WMC] 선점 경쟁에서 밀렸습니다. 이 탭은 추첨하지 않습니다.');
       return null;
     }
-    return token_;
+    return token_ + '@' + evId;
   }catch(e){
-    // 잠금 파일을 쓸 수 없으면(권한 등) 잠금 없이 진행한다 — 추첨이 멈추는 것을 막는다.
-    console.warn('[WMC] 선점 잠금 사용 불가(잠금 없이 진행):', e && e.message);
-    return 'no-lock';
+    // 10-22: 예전에는 잠금 없이 진행했다. 일시 오류(429 · 5xx) 한 번에 두 탭이 동시에 추첨할 수 있어 이제는 멈춘다.
+    // 자동 추첨은 다음에 관리자 화면을 열 때 따라잡고, 수동은 다시 누르면 된다.
+    console.warn('[WMC] 선점 잠금을 확인하지 못해 추첨하지 않습니다:', e && e.message);
+    return null;
   }
 }
 /* 잠금 해제 — 내 표식일 때만 비운다.
@@ -2884,15 +2889,17 @@ async function acquireDrawLock(evId){
        — 그 실패가 일시적이었다면 다른 탭이 정상으로 잠금을 쥐고 있을 수 있는데,
          이 탭의 finally 가 그것을 비워 두 탭이 동시에 추첨할 길이 열렸다.
      · 내 추첨이 TTL(10분)을 넘겨 다른 탭이 이어받은 경우 — 역시 그 잠금을 비웠다. */
-async function releaseDrawLock(myToken){
-  if(!myToken || myToken === 'no-lock') return;      // 내가 쥔 잠금이 아니면 건드리지 않는다
+async function releaseDrawLock(myLock){
+  if(!myLock || myLock === 'no-lock') return;      // 내가 쥔 잠금이 아니면 건드리지 않는다
+  const _i = String(myLock).lastIndexOf('@');
+  const myToken = String(myLock).slice(0, _i), LF = drawLockFile(String(myLock).slice(_i + 1));
   try{
-    const cur = await driveGet(DRAW_LOCK_FILE);
+    const cur = await driveGet(LF);
     if(cur && cur.token && cur.token !== myToken){
       console.warn('[WMC] 잠금이 다른 곳으로 넘어가 있어 해제하지 않습니다:', cur.by);
       return;
     }
-    await drivePutJson(DRAW_LOCK_FILE, {eventId:'', by:'', at:0, token:''});
+    await drivePutJson(LF, {eventId:'', by:'', at:0, token:''});
   }catch(e){ console.warn('[WMC] 잠금 해제 실패(10분 뒤 자동 만료):', e && e.message); }
 }
 
@@ -2913,7 +2920,10 @@ async function runDrawForEvent(evId, opts = {}){
   if(!_emails.includes(_me)){ console.warn('[WMC] 관리자가 아니어서 추첨하지 않습니다:', _me); return null; }
   // ③ 선점 잠금 — 여러 탭이 동시에 시작해도 한 곳만 진행
   const lock = await acquireDrawLock(evId);
-  if(!lock) return null;
+  if(!lock){
+    if(!opts.auto) alert('다른 곳에서 이 이벤트를 추첨하고 있거나, 추첨 잠금을 확인하지 못했습니다.\n잠시 후 목록을 새로 고친 뒤 다시 시도해 주세요.');
+    return null;
+  }
   _drawBusy = true;
   let _audit = null;
   try{
@@ -3382,7 +3392,7 @@ async function setCoupon(email, val){
 // MODAL
 // ═══════════════════════════════════════════
 function showConfirmModal(msg, onOk){
-  document.getElementById('confirm-msg').innerHTML = msg.replace(/\n/g,'<br>');
+  document.getElementById('confirm-msg').innerHTML = _esc(msg).replace(/\n/g,'<br>');   // 10-22: 차량명 등 데이터가 섞이므로 글자로만
   document.getElementById('confirm-modal').classList.add('open');
   document.getElementById('confirm-ok-btn').onclick = ()=>{ closeConfirm(); onOk(); };
 }
