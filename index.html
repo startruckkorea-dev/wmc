@@ -831,7 +831,8 @@ html, * { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
                 <li><b>마감 시각과 추첨 시각이 같으면 1분 뒤에 돕니다.</b> 마감 16:00 · 추첨 16:00 이면 <b>16:01</b>에 실행됩니다.
                   <span class="dg-sub">마감 직전에 누른 신청이 아직 저장되는 중일 수 있어서입니다. 그 사이에 추첨이 돌면 <b>그 신청은 당첨도 낙첨도 아닌 채 남고 쿠폰도 돌아가지 않습니다.</b></span></li>
                 <li>마감이 <b>2시간 넘게 남은</b> 이벤트는 이번에는 건너뛰고, <b>다음 예정 시각</b>에 다시 판단합니다.</li>
-                <li>자동 추첨은 <b>관리자 화면이 열려 있는 동안</b>에만 동작합니다. 그 시각에 아무도 열어 두지 않았다면 나중에 <b>수동으로</b> 돌려 주세요 — 놓친 시각을 저절로 따라잡지는 않습니다.</li>
+                <li>자동 추첨은 <b>관리자 화면이 열려 있는 동안</b>에만 동작합니다. 그 시각에 아무도 열어 두지 않았다면, 그 뒤 <b>관리자 화면을 처음 연 때</b> 놓친 추첨을 따라잡습니다.
+                  <span class="dg-sub">대상은 <b>마감이 지났고 이용 시작 전</b>인 이벤트뿐입니다. 이용이 이미 시작된 이벤트는 자동으로 돌리지 않으니 <b>수동으로</b> 돌려 주세요.</span></li>
               </ol>
             </div>
           </details>
@@ -2678,7 +2679,12 @@ function startDrawScheduler(){
         now.getUTCDate() - ((now.getUTCDay() - Number(s.day) + 7) % 7), Number(s.hour), Number(sMin), 0));
       const _late = now.getTime() - _due.getTime();
       const _key = _due.toISOString().slice(0,16);
-      if(_late >= 0 && _late < 2*3600*1000 && _lastAutoDrawKey !== _key){
+      /* 10-22: 놓친 추첨 따라잡기 — 예정 시각에 관리자 화면이 닫혀 있었으면(2시간 초과) 예전에는 그 주 추첨을
+         건너뛰고 다음 주를 기다렸다. 이제 늦게 연 관리자 탭이 「마감이 지났고 · 이용 시작 전」인 이벤트만 골라 돌린다.
+         이용이 이미 시작된 이벤트는 되살리지 않는다(관리자가 상황을 보고 수동으로). 중복 추첨은 runDrawForEvent 의
+         선점 잠금 · Active 재확인이 막는다. */
+      const _catchUp = _late >= 2*3600*1000;
+      if(_late >= 0 && _lastAutoDrawKey !== _key){
         _lastAutoDrawKey = _key;
         if(_late > 90*1000) console.warn('[WMC] 예정 시각보다 ' + Math.round(_late/60000) + '분 늦게 자동 추첨을 시작합니다(브라우저 타이머 지연).');
         try{
@@ -2698,6 +2704,17 @@ function startDrawScheduler(){
              (수동으로 다시 돌릴 필요가 없게). 너무 먼 건(2시간 초과)은 다음 주기에 맡긴다. */
           const nowMs = Date.now();
           const later = [];
+          if(_catchUp){
+            active = active.filter(ev=>{
+              const dl = ev.fields.Deadline ? new Date(ev.fields.Deadline).getTime() : 0;
+              const st = ev.fields.AvailableStart ? new Date(ev.fields.AvailableStart).getTime() : 0;
+              return dl && nowMs >= dl + DRAW_GRACE_MS && (!st || nowMs < st);
+            });
+            if(active.length){
+              console.warn('[WMC] 놓친 자동 추첨을 따라잡습니다(' + Math.round(_late/60000) + '분 늦음):', active.map(ev=>ev.fields.Title).join(', '));
+              try{ showToast('예정 시각에 놓친 자동 추첨 ' + active.length + '건을 지금 실행합니다.', '⏰', 4000); }catch(e){}
+            }
+          }
           active = active.filter(ev=>{
             const dl = ev.fields.Deadline ? new Date(ev.fields.Deadline).getTime() : 0;
             if(!dl) return true;
@@ -2706,7 +2723,8 @@ function startDrawScheduler(){
             return true;
           });
           for(const ev of active) await runDrawForEvent(ev.id, {auto:true});
-          later.forEach(({ev, wait})=>{
+          if(_catchUp && active.length){ try{ await loadAdminEvents(); }catch(e){} }
+          if(!_catchUp) later.forEach(({ev, wait})=>{
             const key = String(ev.id);
             if(wait > 2*3600*1000){ console.warn('[WMC] 자동 추첨 보류(마감이 멀다):', ev.fields.Title||key); return; }
             if(_autoDrawPending.has(key)) return;
