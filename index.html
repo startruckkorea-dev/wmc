@@ -2078,7 +2078,9 @@ function renderHistoryTable(keepPage){
 /* APS 결재함 관리 「시스템 이력」 과 같은 방식 — wmcAudit 가 남긴 Logging_data/WMC/YYYY-MM-DD/*.json 을 고른 기간만 읽어 표로.
    · 기본 최근 7일(WMC 기록은 추첨 · 쿠폰 조정 때만 생겨 하루로는 대개 비어 있다) · 한 번에 최대 31일 · 「불러오기」 로만 읽는다.
    · 행위별 한 줄 요약(추첨 결과는 「제목 · 방식 · 차량 · 당첨 · 낙첨 · 환급 실패」), 행을 누르면 원본(JSON), Excel 은 거른 결과 그대로.
-   · 조회 · 내보내기도 wmcAudit 로 남긴다(APS 와 같음). 이 화면은 관리자 탭 안에만 있다(WM_ADMIN_n). */
+   · 조회 · 내보내기도 wmcAudit 로 남긴다(APS 와 같음). 이 화면은 관리자 탭 안에만 있다(WM_ADMIN_n).
+   · 11-10 밤: 공통 슈퍼 관리자(설정 ADMIN_SP · ADMIN_SP_1 · ADMIN_SP_2 …)가 한 기록은 표 · 건수 · Excel 에서 뺀다(사용자 요청 — IT 운영 계정의 확인 · 시험 기록이 업무 기록에 섞이지 않게).
+     기록 파일은 그대로 남는다(APS 결재함 「시스템 이력」 에서는 보인다). 빼는 기준은 「사용자」 칸 — 슈퍼 관리자가 대상인 다른 사람의 기록(예: 쿠폰 값 지정 대상)은 그대로 보인다. */
 const WSL_DAYS = 7, WSL_MAX_DAYS = 31, WSL_PAGE = 20;
 const _wsl = { items: [], view: [], page: 1, from: '', to: '', range: '' };
 function wslDay(d){ return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0'); }
@@ -2109,6 +2111,12 @@ function wslShift(dir){
   let nf = wslAdd(f.value, dir*len), nt = wslAdd(t.value, dir*len);
   if(nt > today){ nt = today; nf = wslAdd(today, -(len-1)); }
   f.value = nf; t.value = nt; wslMark();
+}
+async function wslHiddenUsers(){   // 설정 ADMIN_SP(_n) 의 메일 — 소문자
+  let cfg = _sysConfig; if(!cfg){ try{ cfg = await loadSystemConfig(); }catch(e){ cfg = null; } }
+  const set = new Set();
+  if(cfg) Object.keys(cfg).filter(k => /^ADMIN_SP(_\d+)?$/.test(k)).forEach(k => { const m = String((cfg[k] && cfg[k].email) || '').trim().toLowerCase(); if(m.includes('@')) set.add(m); });
+  return set;
 }
 async function wslRead(f, t, retry = 0){
   const r = await fetch(f.url || (GRAPH + '/drives/' + f.drive + '/items/' + f.id + '/content'), f.url ? { cache: 'no-store' } : { headers: { Authorization: 'Bearer ' + t }, cache: 'no-store' });
@@ -2145,15 +2153,16 @@ async function wslLoad(){
     }));
     out.forEach(e => { e.ts = e.timestampKST || (e.day + ' ' + String(e.name).slice(0,2) + ':' + String(e.name).slice(2,4) + ':' + String(e.name).slice(4,6)); });
     out.sort((a, b) => (b.ts > a.ts ? 1 : b.ts < a.ts ? -1 : 0));
-    Object.assign(_wsl, { items: out, from, to, range });
-    const acts = [...new Set(out.map(e => e.action || ''))].filter(Boolean).sort();
+    const hide = await wslHiddenUsers(), shown = out.filter(e => !hide.has(String(e.user || '').trim().toLowerCase()));
+    Object.assign(_wsl, { items: shown, hidden: out.length - shown.length, from, to, range });
+    const acts = [...new Set(shown.map(e => e.action || ''))].filter(Boolean).sort();
     const sel = document.getElementById('wsl-act'), cur = sel.value;
     sel.innerHTML = '<option value="">전체 행위</option>' + acts.map(a => '<option value="' + _esc(a) + '">' + _esc(a) + '</option>').join('');
     sel.value = acts.includes(cur) ? cur : '';
     document.getElementById('wsl-q').value = '';
     document.getElementById('wsl-body').style.display = '';
     wslRender(true);
-    wmcAudit('시스템 이력 조회', { 기간: range, 건수: out.length });
+    wmcAudit('시스템 이력 조회', { 기간: range, 건수: shown.length, 공통관리자제외: out.length - shown.length });
   }catch(e){ console.error(e); alert('이력을 읽지 못했습니다.\n\n' + (e && e.message || e)); }
   finally{ loading(false); btn.disabled = false; }
 }
@@ -2188,7 +2197,7 @@ function wslRender(resetPage){
   const users = new Set(_wsl.items.map(e => String(e.user || '').toLowerCase()).filter(Boolean)).size;   // 읽기 실패 줄(사용자 없음)은 세지 않는다
   const byAct = {}; _wsl.items.forEach(e => { byAct[e.action || '-'] = (byAct[e.action || '-'] || 0) + 1; });
   const top = Object.entries(byAct).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => _esc(k) + ' ' + v).join(' · ');
-  document.getElementById('wsl-count').innerHTML = '<b>' + _esc(_wsl.range) + '</b> · 총 ' + _wsl.items.length + '건 · 사용자 ' + users + '명' + (top ? ' · ' + top : '') + ((q || act) ? ' · <b>거른 결과 ' + items.length + '건</b>' : '');
+  document.getElementById('wsl-count').innerHTML = '<b>' + _esc(_wsl.range) + '</b> · 총 ' + _wsl.items.length + '건 · 사용자 ' + users + '명' + (top ? ' · ' + top : '') + ((q || act) ? ' · <b>거른 결과 ' + items.length + '건</b>' : '') + (_wsl.hidden ? ' · 공통 관리자 기록 ' + _wsl.hidden + '건 제외' : '');
   const start = (_wsl.page - 1) * WSL_PAGE, slice = items.slice(start, start + WSL_PAGE);
   const rows = slice.map((e, i) => { const s = wslSummary(e), bad = /실패|중단/.test(e.action || '');
     return '<tr class="r' + (bad ? ' bad' : '') + '" onclick="wslToggle(this,' + (start + i) + ')">'
