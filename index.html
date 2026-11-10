@@ -2078,6 +2078,7 @@ function renderHistoryTable(keepPage){
 /* APS 결재함 관리 「시스템 이력」 과 같은 방식 — wmcAudit 가 남긴 Logging_data/WMC/YYYY-MM-DD/*.json 을 고른 기간만 읽어 표로.
    · 기본 최근 7일(WMC 기록은 추첨 · 쿠폰 조정 때만 생겨 하루로는 대개 비어 있다) · 한 번에 최대 31일 · 「불러오기」 로만 읽는다.
    · 행위별 한 줄 요약(추첨 결과는 「제목 · 방식 · 차량 · 당첨 · 낙첨 · 환급 실패」), 행을 누르면 원본(JSON), Excel 은 거른 결과 그대로.
+     저장 위치(폴더 · 파일 이름)는 원본 · Excel 에 넣지 않는다(11-11 — 내부 저장 이름을 화면에 내지 않는 규칙).
    · 조회 · 내보내기도 wmcAudit 로 남긴다(APS 와 같음). 이 화면은 관리자 탭 안에만 있다(WM_ADMIN_n).
    · 11-10 밤: 공통 슈퍼 관리자(설정 ADMIN_SP · ADMIN_SP_1 · ADMIN_SP_2 …)가 한 기록은 표 · 건수 · Excel 에서 뺀다(사용자 요청 — IT 운영 계정의 확인 · 시험 기록이 업무 기록에 섞이지 않게).
      기록 파일은 그대로 남는다(APS 결재함 「시스템 이력」 에서는 보인다). 빼는 기준은 「사용자」 칸 — 슈퍼 관리자가 대상인 다른 사람의 기록(예: 쿠폰 값 지정 대상)은 그대로 보인다. */
@@ -2215,15 +2216,15 @@ function wslToggle(tr, idx){
   const nx = tr.nextElementSibling; if(nx && nx.classList.contains('raw')){ nx.remove(); return; }
   const e = _wsl.view[idx]; if(!e) return;
   const r = document.createElement('tr'); r.className = 'raw';
-  r.innerHTML = '<td colspan="4"><pre>' + _esc(JSON.stringify({ timestampKST: e.timestampKST || e.ts, user: e.user, system: e.system, action: e.action, detail: e.detail || {}, version: e.version, file: 'Logging_data/' + WMC_LOG_SYSTEM + '/' + e.file }, null, 2)) + '</pre></td>';
+  r.innerHTML = '<td colspan="4"><pre>' + _esc(JSON.stringify({ timestampKST: e.timestampKST || e.ts, user: e.user, system: e.system, action: e.action, detail: e.detail || {}, version: e.version }, null, 2)) + '</pre></td>';
   tr.after(r);
 }
 function wslExport(){
   if(!_wsl.items.length){ alert('먼저 이력을 불러오세요.'); return; }
-  const rows = [['일시', '사용자', '행위', '내용', '상세(JSON)', '파일']];
-  _wsl.view.forEach(e => rows.push([e.ts, e.user || '', e.action || '', wslSummary(e), JSON.stringify(e.detail || {}), 'Logging_data/' + WMC_LOG_SYSTEM + '/' + e.file]));
+  const rows = [['일시', '사용자', '행위', '내용', '상세(JSON)']];   // 11-11 저장 위치(폴더 · 파일 이름)는 화면 · 파일에 내지 않는다
+  _wsl.view.forEach(e => rows.push([e.ts, e.user || '', e.action || '', wslSummary(e), JSON.stringify(e.detail || {})]));
   const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{ wch: 19 }, { wch: 30 }, { wch: 16 }, { wch: 70 }, { wch: 80 }, { wch: 50 }];
+  ws['!cols'] = [{ wch: 19 }, { wch: 30 }, { wch: 16 }, { wch: 70 }, { wch: 80 }];
   XLSX.utils.book_append_sheet(wb, ws, '시스템 이력');
   XLSX.writeFile(wb, 'WMC_시스템이력_' + _wsl.from.replace(/-/g, '') + '-' + _wsl.to.replace(/-/g, '') + '.xlsx');
   wmcAudit('시스템 이력 내보내기', { 기간: _wsl.range, 건수: rows.length - 1 });
