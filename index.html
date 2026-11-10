@@ -239,6 +239,34 @@ tbody tr:hover td{background:#fafbfd}
 .btn-warning:hover{background:#bf360c}
 .btn-secondary{background:var(--gray2);color:var(--text)}
 .btn-secondary:hover{background:#bdbdbd}
+/* 11-10 시스템 이력 조회(관리자 탭 · 신청 기록 아래) */
+.wsl-desc{min-width:0;font-size:.74rem;color:var(--gray3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:auto}
+.wsl-ctrl,.wsl-tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.wsl-tools{margin:14px 0 8px;padding-top:12px;border-top:1px solid var(--gray2)}
+.wsl-range{display:inline-flex;align-items:center;gap:6px}
+.wsl-in{height:32px;box-sizing:border-box;padding:0 10px;border:1px solid var(--gray2);border-radius:4px;background:#fff;color:var(--text);font-size:.8rem;font-family:inherit}
+.wsl-in:focus{outline:none;border-color:var(--blue)}
+.wsl-q{flex:1;min-width:180px}
+.wsl-tilde{color:var(--gray3);font-size:.8rem}
+.wsl-ico{width:32px;height:32px;padding:0;font-size:15px}
+.wsl-ctrl .btn-sm,.wsl-tools .btn-sm{height:32px}
+.wsl-seg{display:inline-flex;height:32px;border:1px solid var(--gray2);border-radius:4px;overflow:hidden;background:#fff}
+.wsl-seg>button{height:100%;padding:0 12px;border:0;background:transparent;color:var(--text2);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.wsl-seg>button+button{border-left:1px solid var(--gray2)}
+.wsl-seg>button.on{background:var(--blue-light);color:var(--blue)}
+.wsl-count{margin-left:auto;font-size:.78rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.wsl-box{overflow-x:auto;border:1px solid var(--gray2);border-radius:6px}
+.wsl-tbl{width:100%;min-width:720px;table-layout:fixed;border-collapse:collapse;font-size:.8rem}
+.wsl-tbl th{padding:8px 10px;text-align:left;background:var(--blue);color:#fff;font-weight:600;white-space:nowrap}
+.wsl-tbl td{padding:7px 10px;border-bottom:1px solid var(--gray2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wsl-tbl tr.r{cursor:pointer}
+.wsl-tbl tr.r:hover td{background:var(--blue-light)}
+.wsl-tbl tr.bad td{background:#fff5f5}
+.wsl-tbl td.a{font-weight:700}
+.wsl-tbl tr.raw td{white-space:normal;background:#f8fafc}
+.wsl-tbl pre{margin:0;max-height:360px;overflow:auto;font-size:.74rem;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:#334155;font-family:inherit}
+.wsl-empty{padding:20px;text-align:center;color:var(--gray3);font-size:.82rem}
+.wsl-pg{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;font-size:.82rem}
 .btn-sm{padding:4px 10px;font-size:.75rem}
 .vehicle-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;background:var(--gray);padding:8px;border-radius:4px}
 .vehicle-row input{flex:1;min-width:0}
@@ -760,6 +788,34 @@ html, * { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
         <div id="winner-history-table"><div style="color:var(--gray3);font-size:.85rem">새로고침을 눌러 조회하세요.</div></div>
       </div>
     </div>
+
+    <!-- 시스템 이력 조회(11-10) — APS 결재함 관리 「시스템 이력」 과 같은 방식으로 WMC 기록만(Logging_data/WMC/YYYY-MM-DD/*.json) -->
+    <div class="card admin-section" id="wsl-card">
+      <div class="card-header">
+        <span class="card-title">시스템 이력 조회</span>
+        <span class="wsl-desc">추첨 결과 · 추첨 중단 · 환급 실패 · 쿠폰 조정 기록 · 기본 최근 7일(최대 31일) · 조회 사실도 기록에 남습니다</span>
+      </div>
+      <div class="card-body">
+        <div class="wsl-ctrl">
+          <span class="wsl-range">
+            <button type="button" class="btn btn-secondary btn-sm wsl-ico" onclick="wslShift(-1)" title="고른 기간 길이만큼 앞으로" aria-label="이전 기간">‹</button>
+            <input type="date" id="wsl-from" class="wsl-in" onchange="wslRangeFix('from')" aria-label="시작일" autocomplete="off"><span class="wsl-tilde">~</span><input type="date" id="wsl-to" class="wsl-in" onchange="wslRangeFix('to')" aria-label="종료일" autocomplete="off">
+            <button type="button" class="btn btn-secondary btn-sm wsl-ico" onclick="wslShift(1)" title="고른 기간 길이만큼 뒤로" aria-label="다음 기간">›</button>
+          </span>
+          <span class="wsl-seg" role="group" aria-label="기간 빨리 고르기"><button type="button" data-days="1" onclick="wslDays(1)">오늘</button><button type="button" data-days="7" onclick="wslDays(7)">최근 7일</button><button type="button" data-days="31" onclick="wslDays(31)">최근 31일</button></span>
+          <button type="button" class="btn btn-primary btn-sm" id="wsl-btn" onclick="wslLoad()">불러오기</button>
+        </div>
+        <div id="wsl-body" style="display:none">
+          <div class="wsl-tools">
+            <input type="text" id="wsl-q" class="wsl-in wsl-q" placeholder="사용자 · 행위 · 내용으로 거르기" oninput="wslRender(true)" autocomplete="off">
+            <select id="wsl-act" class="wsl-in" onchange="wslRender(true)" autocomplete="off"><option value="">전체 행위</option></select>
+            <span id="wsl-count" class="wsl-count"></span>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="wslExport()">Excel 내보내기</button>
+          </div>
+          <div id="wsl-table"></div>
+        </div>
+      </div>
+    </div>
       <div class="card-header">
         <span class="card-title">추첨 실행</span>
       </div>
@@ -926,7 +982,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-10-22.1';
+const APP_VERSION = '2026-11-10.1';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
@@ -1320,7 +1376,7 @@ async function switchTab(tab){
   document.getElementById('tab-'+tab)?.classList.add('active');
   document.getElementById('page-'+tab)?.classList.add('active');
   if(tab==='my') loadMyPage();
-  if(tab==='admin'){ initFlatpickrs(); loadAdminEvents(); loadCouponData(); setTimeout(()=>_setConnStatus(typeof _lastApiOk!=='undefined'&&Date.now()-_lastApiOk<6*60*1000),100); }
+  if(tab==='admin'){ initFlatpickrs(); loadAdminEvents(); loadCouponData(); wslDefault(false); setTimeout(()=>_setConnStatus(typeof _lastApiOk!=='undefined'&&Date.now()-_lastApiOk<6*60*1000),100); }
 }
 
 // ═══════════════════════════════════════════
@@ -2014,6 +2070,154 @@ function renderHistoryTable(keepPage){
         <button class="btn btn-secondary btn-sm" onclick="histPageGo(${totalPages})" ${_histPage===totalPages?'disabled':''}>»</button>
       </div>` : '');
   document.getElementById('winner-history-table').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// ADMIN: 시스템 이력 조회(11-10)
+// ═══════════════════════════════════════════
+/* APS 결재함 관리 「시스템 이력」 과 같은 방식 — wmcAudit 가 남긴 Logging_data/WMC/YYYY-MM-DD/*.json 을 고른 기간만 읽어 표로.
+   · 기본 최근 7일(WMC 기록은 추첨 · 쿠폰 조정 때만 생겨 하루로는 대개 비어 있다) · 한 번에 최대 31일 · 「불러오기」 로만 읽는다.
+   · 행위별 한 줄 요약(추첨 결과는 「제목 · 방식 · 차량 · 당첨 · 낙첨 · 환급 실패」), 행을 누르면 원본(JSON), Excel 은 거른 결과 그대로.
+   · 조회 · 내보내기도 wmcAudit 로 남긴다(APS 와 같음). 이 화면은 관리자 탭 안에만 있다(WM_ADMIN_n). */
+const WSL_DAYS = 7, WSL_MAX_DAYS = 31, WSL_PAGE = 20;
+const _wsl = { items: [], view: [], page: 1, from: '', to: '', range: '' };
+function wslDay(d){ return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0'); }
+function wslAdd(str, n){ const d = new Date(str + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return wslDay(d); }
+function wslToday(){ return wslDay(new Date(Date.now() + 9*3600*1000)); }
+function wslEls(){ return [document.getElementById('wsl-from'), document.getElementById('wsl-to')]; }
+function wslMark(){
+  const [f, t] = wslEls(); if(!f || !t) return; const today = wslToday();
+  document.querySelectorAll('#wsl-card .wsl-seg [data-days]').forEach(b => { const n = +b.dataset.days; b.classList.toggle('on', t.value === today && f.value === wslAdd(today, -(n-1))); });
+}
+function wslDefault(force){
+  const [f, t] = wslEls(); if(!f || !t) return; const today = wslToday();
+  if(force || !f.value || !t.value){ t.value = today; f.value = wslAdd(today, -(WSL_DAYS-1)); }
+  f.max = today; t.max = today; wslMark();
+}
+function wslDays(n){ const [f, t] = wslEls(); const today = wslToday(); t.value = today; f.value = wslAdd(today, -(n-1)); f.max = today; t.max = today; wslMark(); }
+/* 시작 · 끝을 자유롭게 — 시작 ≤ 끝, 끝 ≤ 오늘, 기간 ≤ 31일(넘으면 바꾼 쪽을 기준으로 다른 쪽을 당긴다) */
+function wslRangeFix(which){
+  const [f, t] = wslEls(), today = wslToday();
+  if(f.value > today) f.value = today; if(t.value > today) t.value = today;
+  if(which === 'from' && f.value){ if(!t.value || t.value < f.value) t.value = f.value; if(wslAdd(f.value, WSL_MAX_DAYS-1) < t.value) t.value = wslAdd(f.value, WSL_MAX_DAYS-1); }
+  else if(which === 'to' && t.value){ if(!f.value || f.value > t.value) f.value = t.value; if(wslAdd(t.value, -(WSL_MAX_DAYS-1)) > f.value) f.value = wslAdd(t.value, -(WSL_MAX_DAYS-1)); }
+  wslMark();
+}
+function wslShift(dir){
+  const [f, t] = wslEls(); if(!f.value || !t.value || f.value > t.value) wslDefault(true);
+  const len = Math.round((new Date(t.value+'T00:00:00Z') - new Date(f.value+'T00:00:00Z')) / 864e5) + 1, today = wslToday();
+  let nf = wslAdd(f.value, dir*len), nt = wslAdd(t.value, dir*len);
+  if(nt > today){ nt = today; nf = wslAdd(today, -(len-1)); }
+  f.value = nf; t.value = nt; wslMark();
+}
+async function wslRead(f, t, retry = 0){
+  const r = await fetch(f.url || (GRAPH + '/drives/' + f.drive + '/items/' + f.id + '/content'), f.url ? { cache: 'no-store' } : { headers: { Authorization: 'Bearer ' + t }, cache: 'no-store' });
+  if((r.status === 429 || r.status === 503) && retry < 3){ await new Promise(res => setTimeout(res, 1200*(retry+1))); return wslRead(f, t, retry+1); }
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function wslLoad(){
+  wslDefault(false);
+  const [fe, te] = wslEls(), from = fe.value, to = te.value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to){ alert('조회 기간을 확인해 주세요.'); return; }
+  if(wslAdd(from, WSL_MAX_DAYS-1) < to){ alert('한 번에 ' + WSL_MAX_DAYS + '일까지 조회할 수 있습니다. 기간을 줄여 주세요.'); return; }
+  const range = from === to ? from : from + ' ~ ' + to, btn = document.getElementById('wsl-btn');
+  btn.disabled = true; loading(true, range + ' 이력을 찾는 중...');
+  try{
+    const d = await docDrive();
+    let days = [];
+    try{ days = (await apiAll('/drives/' + d + '/root:/Logging_data/' + WMC_LOG_SYSTEM + ':/children?$select=id,name,folder&$top=999')).value.filter(x => x.folder && /^\d{4}-\d{2}-\d{2}$/.test(x.name) && x.name >= from && x.name <= to); }
+    catch(e){ if(!/^404\b/.test(String(e && e.message))) throw e; }   // 기록 폴더가 아직 없음 = 기록 0건
+    const files = [], dq = days.slice();
+    await Promise.all(Array.from({ length: Math.min(4, Math.max(1, dq.length)) }, async () => {
+      while(dq.length){ const day = dq.shift();
+        const ch = (await apiAll('/drives/' + d + '/items/' + day.id + '/children?$select=id,name,file,size,content.downloadUrl&$top=999')).value;
+        ch.filter(c => c.file && /\.json$/i.test(c.name)).forEach(c => files.push({ id: c.id, name: c.name, day: day.name, drive: d, url: c['@microsoft.graph.downloadUrl'] || '' }));
+      }
+    }));
+    const t = await token(), out = [], fq = files.slice(); let done = 0;
+    await Promise.all(Array.from({ length: Math.min(6, Math.max(1, fq.length)) }, async () => {
+      while(fq.length){ const f = fq.shift();
+        try{ const j = await wslRead(f, t); out.push(Object.assign({ file: f.day + '/' + f.name, day: f.day, name: f.name }, j && typeof j === 'object' ? j : {})); }
+        catch(e){ out.push({ file: f.day + '/' + f.name, day: f.day, name: f.name, action: '(읽기 실패)', detail: { 오류: e.message } }); }
+        if(++done % 20 === 0) loading(true, range + ' 이력을 읽는 중... ' + done + ' / ' + files.length);
+      }
+    }));
+    out.forEach(e => { e.ts = e.timestampKST || (e.day + ' ' + String(e.name).slice(0,2) + ':' + String(e.name).slice(2,4) + ':' + String(e.name).slice(4,6)); });
+    out.sort((a, b) => (b.ts > a.ts ? 1 : b.ts < a.ts ? -1 : 0));
+    Object.assign(_wsl, { items: out, from, to, range });
+    const acts = [...new Set(out.map(e => e.action || ''))].filter(Boolean).sort();
+    const sel = document.getElementById('wsl-act'), cur = sel.value;
+    sel.innerHTML = '<option value="">전체 행위</option>' + acts.map(a => '<option value="' + _esc(a) + '">' + _esc(a) + '</option>').join('');
+    sel.value = acts.includes(cur) ? cur : '';
+    document.getElementById('wsl-q').value = '';
+    document.getElementById('wsl-body').style.display = '';
+    wslRender(true);
+    wmcAudit('시스템 이력 조회', { 기간: range, 건수: out.length });
+  }catch(e){ console.error(e); alert('이력을 읽지 못했습니다.\n\n' + (e && e.message || e)); }
+  finally{ loading(false); btn.disabled = false; }
+}
+/* 행위별 한 줄 요약 — 모르는 행위는 「키: 값」 으로 편다(APS 시스템 이력과 같은 규칙) */
+function wslSummary(e){
+  const d = e.detail; if(!d || typeof d !== 'object') return d == null ? '' : String(d);
+  const n = v => (v == null || v === '' ? '-' : Number(v).toLocaleString());
+  const cut = s => (s.length > 220 ? s.slice(0, 220) + '…' : s);
+  switch(e.action){
+    case '추첨 결과': case '추첨 중단': {
+      const cars = Array.isArray(d.차량) ? d.차량 : [], win = cars.filter(v => v && v.당첨).length, lose = cars.reduce((a, v) => a + ((v && v.낙첨) || []).length, 0), bad = (d.환급실패 || []).length;
+      return cut([d.제목 || ('이벤트 ' + n(d.이벤트)), d.방식, '차량 ' + cars.length + '대', '당첨 ' + (d.당첨수 != null ? d.당첨수 : win) + '명', '낙첨 ' + lose + '명', d.쿠폰 != null ? '쿠폰 ' + d.쿠폰 : '', bad ? '환급 실패 ' + bad + '명' : '', d.오류 ? '오류: ' + d.오류 : ''].filter(Boolean).join(' · ')); }
+    case '환급 실패': { const who = Array.isArray(d.대상) ? d.대상.length + '명' : (d.email || ''); return cut([d.경위, d.제목, who, d.오류 ? '오류: ' + d.오류 : ''].filter(Boolean).join(' · ')); }
+    case '쿠폰 값 지정': return (d.email || '') + ' · ' + n(d.이전) + ' → ' + n(d.새값);
+    case '쿠폰 증감': return (d.email || '') + ' · ' + (Number(d.증감) > 0 ? '+' : '') + n(d.증감) + ' → ' + n(d.새값);
+    case '쿠폰 행 추가': return n(d.추가) + '명 추가 · 시작 쿠폰 ' + n(d.시작쿠폰) + ((d.실패 || []).length ? ' · 실패 ' + d.실패.length + '명' : '');
+    case '쿠폰 행 삭제': return (d.email || '') + (d.이름 ? ' (' + d.이름 + ')' : '') + ' · 남은 쿠폰 ' + n(d.잔여쿠폰);
+    case '쿠폰 차감 실패': return cut((d.email || '') + ' · 이벤트 ' + n(d.이벤트) + ' · 쿠폰 ' + n(d.쿠폰) + (d.오류 ? ' · 오류: ' + d.오류 : ''));
+    case '시스템 이력 조회': case '시스템 이력 내보내기': return (d.기간 || '') + ' · ' + n(d.건수) + '건';
+  }
+  const fmtV = v => v === true ? '예' : v === false ? '아니오' : Array.isArray(v) ? v.map(x => (x && typeof x === 'object') ? JSON.stringify(x) : String(x)).join(', ')
+    : (v && typeof v === 'object') ? Object.entries(v).filter(([, x]) => x !== '' && x != null).map(([k, x]) => k + ' ' + fmtV(x)).join(', ') : String(v);
+  return cut(Object.entries(d).filter(([, v]) => v !== '' && v != null).map(([k, v]) => (v && typeof v === 'object' && !Array.isArray(v)) ? k + '(' + fmtV(v) + ')' : k + ': ' + fmtV(v)).join(' · '));
+}
+function wslRender(resetPage){
+  const q = (document.getElementById('wsl-q').value || '').trim().toLowerCase(), act = document.getElementById('wsl-act').value;
+  let items = _wsl.items;
+  if(act) items = items.filter(e => e.action === act);
+  if(q) items = items.filter(e => [e.user, e.action, wslSummary(e)].some(v => String(v || '').toLowerCase().includes(q)));
+  _wsl.view = items; if(resetPage) _wsl.page = 1;
+  const pages = Math.max(1, Math.ceil(items.length / WSL_PAGE)); _wsl.page = Math.min(Math.max(1, _wsl.page), pages);
+  const users = new Set(_wsl.items.map(e => String(e.user || '').toLowerCase()).filter(Boolean)).size;   // 읽기 실패 줄(사용자 없음)은 세지 않는다
+  const byAct = {}; _wsl.items.forEach(e => { byAct[e.action || '-'] = (byAct[e.action || '-'] || 0) + 1; });
+  const top = Object.entries(byAct).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => _esc(k) + ' ' + v).join(' · ');
+  document.getElementById('wsl-count').innerHTML = '<b>' + _esc(_wsl.range) + '</b> · 총 ' + _wsl.items.length + '건 · 사용자 ' + users + '명' + (top ? ' · ' + top : '') + ((q || act) ? ' · <b>거른 결과 ' + items.length + '건</b>' : '');
+  const start = (_wsl.page - 1) * WSL_PAGE, slice = items.slice(start, start + WSL_PAGE);
+  const rows = slice.map((e, i) => { const s = wslSummary(e), bad = /실패|중단/.test(e.action || '');
+    return '<tr class="r' + (bad ? ' bad' : '') + '" onclick="wslToggle(this,' + (start + i) + ')">'
+      + '<td style="color:var(--text2)">' + _esc(String(e.ts || '').slice(5)) + '</td>'
+      + '<td title="' + _esc(String(e.user || '').toLowerCase()) + '">' + _esc(String(e.user || '').toLowerCase()) + '</td>'
+      + '<td class="a" title="' + _esc(e.action || '') + '">' + _esc(e.action || '') + '</td>'
+      + '<td title="' + _esc(s) + '">' + _esc(s) + '</td></tr>'; }).join('');
+  document.getElementById('wsl-table').innerHTML = '<div class="wsl-box"><table class="wsl-tbl"><thead><tr><th style="width:118px">일시</th><th style="width:220px">사용자</th><th style="width:120px">행위</th><th>내용 <span style="font-weight:400;opacity:.75">(행을 누르면 원본)</span></th></tr></thead><tbody>'
+    + (rows || '<tr><td colspan="4" class="wsl-empty">' + (_wsl.items.length ? '거른 조건에 맞는 이력이 없습니다.' : '이 기간에는 이력이 없습니다.') + '</td></tr>') + '</tbody></table></div>'
+    + (pages > 1 ? '<div class="wsl-pg"><button class="btn btn-secondary btn-sm" onclick="wslGo(1)" ' + (_wsl.page === 1 ? 'disabled' : '') + '>«</button><button class="btn btn-secondary btn-sm" onclick="wslGo(' + (_wsl.page - 1) + ')" ' + (_wsl.page === 1 ? 'disabled' : '') + '>‹</button>'
+      + '<span style="color:var(--text2)">' + _wsl.page + ' / ' + pages + '</span><button class="btn btn-secondary btn-sm" onclick="wslGo(' + (_wsl.page + 1) + ')" ' + (_wsl.page === pages ? 'disabled' : '') + '>›</button><button class="btn btn-secondary btn-sm" onclick="wslGo(' + pages + ')" ' + (_wsl.page === pages ? 'disabled' : '') + '>»</button></div>' : '');
+}
+function wslGo(p){ _wsl.page = p; wslRender(false); }
+function wslToggle(tr, idx){
+  const nx = tr.nextElementSibling; if(nx && nx.classList.contains('raw')){ nx.remove(); return; }
+  const e = _wsl.view[idx]; if(!e) return;
+  const r = document.createElement('tr'); r.className = 'raw';
+  r.innerHTML = '<td colspan="4"><pre>' + _esc(JSON.stringify({ timestampKST: e.timestampKST || e.ts, user: e.user, system: e.system, action: e.action, detail: e.detail || {}, version: e.version, file: 'Logging_data/' + WMC_LOG_SYSTEM + '/' + e.file }, null, 2)) + '</pre></td>';
+  tr.after(r);
+}
+function wslExport(){
+  if(!_wsl.items.length){ alert('먼저 이력을 불러오세요.'); return; }
+  const rows = [['일시', '사용자', '행위', '내용', '상세(JSON)', '파일']];
+  _wsl.view.forEach(e => rows.push([e.ts, e.user || '', e.action || '', wslSummary(e), JSON.stringify(e.detail || {}), 'Logging_data/' + WMC_LOG_SYSTEM + '/' + e.file]));
+  const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{ wch: 19 }, { wch: 30 }, { wch: 16 }, { wch: 70 }, { wch: 80 }, { wch: 50 }];
+  XLSX.utils.book_append_sheet(wb, ws, '시스템 이력');
+  XLSX.writeFile(wb, 'WMC_시스템이력_' + _wsl.from.replace(/-/g, '') + '-' + _wsl.to.replace(/-/g, '') + '.xlsx');
+  wmcAudit('시스템 이력 내보내기', { 기간: _wsl.range, 건수: rows.length - 1 });
 }
 
 // ═══════════════════════════════════════════
