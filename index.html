@@ -982,7 +982,7 @@ const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 // 배포 버전 — 추첨 직전에 서버의 최신 index.html 과 대조한다.
 // 오래 열려 있던 탭이 옛 코드로 추첨하는 것을 막기 위한 값이므로, 코드를 고칠 때마다 올린다.
-const APP_VERSION = '2026-11-10.1';
+const APP_VERSION = '2026-11-11.1';
 const DRAW_LOCK_FILE    = 'wmc_draw_lock.json';        // 추첨 선점 잠금 (시스템이 자동 관리)
 
 const LIST_COUPONS = 'WMC_Coupons';   // 쿠폰 원장 (사람 1명 = 1행)
@@ -1609,7 +1609,7 @@ async function showDetail(eventId){
         </div>
       </div>
 
-      ${f.Notice ? `<div class="card"><div class="card-body"><div class="notice-box">${_esc(f.Notice.replace(/<[^>]*>?/g,'').replace(/&nbsp;/g,' ').trim())}</div></div></div>` : ''}
+      ${f.Notice ? `<div class="card"><div class="card-body"><div class="notice-box">${_esc(_spText(f.Notice))}</div></div></div>` : ''}
     `;
 
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -2262,7 +2262,7 @@ async function editEvent(evId){
   fpSet('adm-deadline', f.Deadline||'');
   fpSet('adm-auto-activate', f.AutoActivateAt||'');
   document.getElementById('adm-coupon-cost').value = f.CouponCost||1;
-  document.getElementById('adm-notice').value = f.Notice ? f.Notice.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').trim() : '';
+  document.getElementById('adm-notice').value = f.Notice ? _spText(f.Notice) : '';   // 11-11 — '&#58;' 가 글자로 굳어 저장되지 않게 기호를 되돌려 넣는다
 
   // 차량 목록 채우기
   const vehs = await apiAll(`/sites/${siteId}/lists/${LIST_VEHICLES}/items?$expand=fields`);
@@ -3361,6 +3361,14 @@ async function syncEmployeeCoupons(){
   }
 }
 
+// SharePoint 서식 있는 글 칸(공지 Notice) → 순수 글자. SharePoint 는 ':' 를 '&#58;' 처럼 HTML 기호로 바꿔 저장하므로
+// 태그를 지운 뒤 기호를 원래 글자로 되돌린다(DOMParser — 스크립트는 실행되지 않음). 화면에 넣을 때는 지금처럼 _esc 로 다시 막는다(11-11)
+function _spText(html){
+  const s = String(html==null?'':html).replace(/<[^>]*>?/g,'');
+  let t = s;
+  try { t = new DOMParser().parseFromString('<!doctype html><body>' + s.replace(/</g,'&lt;'), 'text/html').body.textContent || ''; } catch(e) {}
+  return t.replace(/\u00a0/g,' ').trim();
+}
 function _esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function renderSyncBody(){
